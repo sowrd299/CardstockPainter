@@ -3,6 +3,7 @@ This manages importing the CSV data
 It returns lines of the CSV as dicts
 '''
 
+# replaces some uncommon unicode chars with ASCII equivilants
 def filter_complex_chars(c : str):
     filters = dict()
     filters['\u201c'] = '"'
@@ -14,6 +15,7 @@ def filter_complex_chars(c : str):
         return filters[c]
     return c
 
+# a version of readlines that respects CSV syntax more closely
 def read_csv_lines(file : open, split_char : str, line_char : str, str_char : str):
     in_str = False
     line = []

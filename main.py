@@ -35,7 +35,7 @@ class TextBox():
                     cprime = wrapped_text[-1]
                     wrapped_text = wrapped_text[:-1]
                     c = cprime + c
-                # do not put spaces at the start of lines
+                # do not put spaces at the start of lines, and don't put dashes before them
                 if c[0] == ' ':
                     wrapped_text += "\n"+c[1:]
                 else:
@@ -51,6 +51,12 @@ class TextBox():
 
 # a class to define a card frame layout
 class Frame():
+
+    class RenderedCard():
+        def __init__(self, img):
+            self.img = img
+        def save(self, file):
+            self.img.save(file)
 
     # defaults
     size = (200,300)
@@ -78,14 +84,15 @@ class Frame():
             box.render(draw, card[name])
 
         # testing render 
-        img.save("test.png")
+        return self.RenderedCard(img)
+        
 
 if __name__ == "__main__":
     print("Starting...")
 
     # create derived fields
     derived_fields = dict()
-    derived_fields["P/T"] = lambda card : "{0}/{1}".format(card["Power"], card["Toughness"])
+    derived_fields["P/T"] = lambda card : "{0}/{1}".format(card["Power"], card["Toughness"]) if card["Power"] else ""
 
     # constants for creating the text boxes
     boxes = dict()
@@ -103,7 +110,7 @@ if __name__ == "__main__":
 
     # test CSV loader
     for card in csv_loader.cards_from("CardDesigns.csv"):
-        if card["Name"] == "The Other Selfless Teacher":
-            csv_loader.pop_derived_fields(card, derived_fields)
-            print(card) # testing
-            frame.render(card)            
+        csv_loader.pop_derived_fields(card, derived_fields)
+        print(card) # testing
+        rcard = frame.render(card)
+        rcard.save("Output/"+card["Name"].replace(" ", "")+".png") 
