@@ -21,22 +21,25 @@ class TextBox():
 
         for i in range(len(text)):
             c = text[i]
-            #filter out n dashes
-            if c == '\u2013':
-                c = '-'
             # actually keep building
             if under_width(c):
                 wrapped_text += c
-            elif text[i] == ' ':
-                # handle the case where spaces shouldn't start new lines
-                wrapped_text += "\n"
+                '''
+                elif text[i] == ' ':
+                    # handle the case where spaces shouldn't start new lines
+                    wrapped_text += "\n"
+                '''
             else:
                 # make room for the wrapping hyphen
                 while not (under_width("-")):
                     cprime = wrapped_text[-1]
                     wrapped_text = wrapped_text[:-1]
                     c = cprime + c
-                wrapped_text += "-\n" + c
+                # do not put spaces at the start of lines
+                if c[0] == ' ':
+                    wrapped_text += "\n"+c[1:]
+                else:
+                    wrapped_text += "-\n" + c
         return wrapped_text
 
     # draw the given text onto the given box
@@ -91,8 +94,8 @@ if __name__ == "__main__":
     # the boxes themselves
     boxes["Name"] = TextBox((bw+8,bw+8), size[0]-bw*2-16)
     boxes["CMC"] = TextBox((bw+8, bw+32), size[0]-bw*2-16)
-    boxes["Type"] = TextBox((bw+8, size[1]/2-32), size[0]-bw*2-16)
-    boxes["Text"] = TextBox((bw+8, size[1]/2), size[0]-bw*2-16)
+    boxes["Type"] = TextBox((bw+8, size[1]/3-32), size[0]-bw*2-16)
+    boxes["Text"] = TextBox((bw+8, size[1]/3), size[0]-bw*2-16)
     boxes["P/T"] = TextBox((3*size[0]/4, size[1]-32), 3*size[0]/4-bw)
 
     # initialize the frame
@@ -100,7 +103,7 @@ if __name__ == "__main__":
 
     # test CSV loader
     for card in csv_loader.cards_from("CardDesigns.csv"):
-        csv_loader.pop_derived_fields(card, derived_fields)
-        print(card) # testing
-        frame.render(card)            
-        break # testing
+        if card["Name"] == "The Other Selfless Teacher":
+            csv_loader.pop_derived_fields(card, derived_fields)
+            print(card) # testing
+            frame.render(card)            
