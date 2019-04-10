@@ -12,16 +12,31 @@ class TextBox():
 
     # returns a wrapped version of the given text
     # TODO: this is the nieve implementation
+    # TODO: implement automatically creeping down text size
     def wrap_text(self, draw : ImageDraw.Draw, text : str):
         wrapped_text = ""
+
+        def under_width(ext = ''):
+            return draw.multiline_textsize(wrapped_text + ext)[0] <= self.width
+
         for i in range(len(text)):
-            if draw.multiline_textsize(wrapped_text + text[i])[0] < self.width:
-                wrapped_text += text[i]
+            c = text[i]
+            #filter out n dashes
+            if c == '\u2013':
+                c = '-'
+            # actually keep building
+            if under_width(c):
+                wrapped_text += c
             elif text[i] == ' ':
                 # handle the case where spaces shouldn't start new lines
                 wrapped_text += "\n"
             else:
-                wrapped_text += "-\n" + text[i]
+                # make room for the wrapping hyphen
+                while not (under_width("-")):
+                    cprime = wrapped_text[-1]
+                    wrapped_text = wrapped_text[:-1]
+                    c = cprime + c
+                wrapped_text += "-\n" + c
         return wrapped_text
 
     # draw the given text onto the given box
@@ -65,13 +80,27 @@ class Frame():
 if __name__ == "__main__":
     print("Starting...")
 
-    # create the text boxes
+    # create derived fields
+    derived_fields = dict()
+    derived_fields["P/T"] = lambda card : "{0}/{1}".format(card["Power"], card["Toughness"])
+
+    # constants for creating the text boxes
     boxes = dict()
-    boxes["Name"] = TextBox((Frame.boarder_width+8,Frame.boarder_width+8), Frame.size[0]-Frame.boarder_width*2-16)
+    bw = Frame.boarder_width
+    size = Frame.size
+    # the boxes themselves
+    boxes["Name"] = TextBox((bw+8,bw+8), size[0]-bw*2-16)
+    boxes["CMC"] = TextBox((bw+8, bw+32), size[0]-bw*2-16)
+    boxes["Type"] = TextBox((bw+8, size[1]/2-32), size[0]-bw*2-16)
+    boxes["Text"] = TextBox((bw+8, size[1]/2), size[0]-bw*2-16)
+    boxes["P/T"] = TextBox((3*size[0]/4, size[1]-32), 3*size[0]/4-bw)
+
+    # initialize the frame
     frame = Frame(boxes)
 
     # test CSV loader
     for card in csv_loader.cards_from("CardDesigns.csv"):
-        print(card)
+        csv_loader.pop_derived_fields(card, derived_fields)
+        print(card) # testing
         frame.render(card)            
-        break
+        break # testing

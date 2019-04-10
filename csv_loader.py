@@ -14,3 +14,8 @@ def cards_from(file : str, split_char : str = '\t'):
             vals = line.split(split_char)
             if any(vals):
                 yield dict(zip(names, vals))
+
+# add in fields derived from existant fields
+def pop_derived_fields(item : dict, derived_fields : {str : "item => value"}):
+    for field, func in derived_fields.items():
+        item[field] = func(item)
