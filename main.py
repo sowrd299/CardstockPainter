@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw
+from tools import DictTree
 import csv_loader
 
 class TextBox():
@@ -6,9 +7,33 @@ class TextBox():
     # defaults
     text_color = (0,0,0)
 
-    def __init__(self, pos : (int,int), width : int):
+    def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image} ):
         self.pos = pos
         self.width = width
+        self.symbols = DictTree(symbols)
+
+    # returns (<the text with symbol codes removed>, {(<symbol index> : <symbol>})
+    def find_symbols(self, text):
+
+        r_text = ""
+        r_symbols = dict()
+
+        i = 0 # index in original next
+        while i < len(text):
+
+            sub, sym = self.symbols.get_first_entry(text[i:])
+
+            if sym:
+                i += len(sub)
+                r_text += "  " # TODO: handle non-square symbols
+                r_symbols[len(r_text)] = sym
+            
+            else:
+                r_text += text[i]
+                i += 1
+
+        return (r_text, r_symbols)
+
 
     # returns a wrapped version of the given text
     # TODO: this is the nieve implementation
@@ -42,12 +67,23 @@ class TextBox():
                     wrapped_text += "-\n" + c
         return wrapped_text
 
+    # gets the pixel coordinate of the given index
+    #   in the given text, after it would be drawn
+    def get_coord_in_text(draw, text, index):
+
+
     # draw the given text onto the given box
     def render(self, draw : ImageDraw.Draw, text : str):
+        # extract symbols
+        symbol_text, symbols = self.find_symbols(text)
         # wrap the text
-        wrapped_text = self.wrap_text(draw, text)
+        wrapped_text = self.wrap_text(draw, symbol_text)
+        # TODO: this is going to increase indexies...
         # draw the text
         draw.multiline_text(self.pos, wrapped_text, fill=self.text_color)
+        # draw symbols
+        for index, symbol in symbols.items():
+            pass # TODO
 
 # a class to define a card frame layout
 class Frame():
@@ -104,6 +140,17 @@ if __name__ == "__main__":
     boxes["Type"] = TextBox((bw+8, size[1]/3-32), size[0]-bw*2-16)
     boxes["Text"] = TextBox((bw+8, size[1]/3), size[0]-bw*2-16)
     boxes["P/T"] = TextBox((3*size[0]/4, size[1]-32), 3*size[0]/4-bw)
+
+    symbols_paths = {
+        "{W}" : "W.svg.png",
+        "{U}" : "U.svg.png",
+        "{B}" : "B.svg.png",
+        "{R}" : "R.svg.png",
+        "{G}" : "G.svg.png",
+        "{T}" : "T.svg.png"
+    }
+
+    symbols = { s : Image.open(p) for s,p in symbols_paths.items() }
 
     # initialize the frame
     frame = Frame(boxes)
