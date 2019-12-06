@@ -1,8 +1,5 @@
 import csv_loader
 from frame import Frame
-from text_box import TextBox
-from PIL import Image
-
 
 if __name__ == "__main__":
     print("Starting...")
