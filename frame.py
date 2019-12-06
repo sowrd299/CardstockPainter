@@ -27,10 +27,18 @@ class Frame():
     boarder_width = 8
     bg_color = (255, 255, 255)
 
-    def __init__(self, boxes : {str : TextBox}, derived_fields : {str : "card => value"}):
+    def __init__(self,
+            frame_layers : [("card => bool", Image.Image)] = None,
+            boxes : {str : TextBox} = None,
+            derived_fields : {str : "card => value"} = None ):
+
+        self.frame_layers = frame_layers
         self.boxes = boxes
         self.derived_fields = derived_fields
 
+    # returns the size of the frame excluding the boarder
+    def get_inner_size(self):
+        return tuple(i - 2*self.boarder_width for i in self.size) 
 
     # creates a new frame, as defined by the given xml file
     # TODO: handle getting data in different forms
@@ -38,10 +46,18 @@ class Frame():
     @staticmethod
     def open_from_xml(file_path : str):
 
-        frame = Frame(None, None)
+        frame = Frame()
 
         tree = ElementTree.parse(file_path)
         root = tree.getroot()
+
+        # create frame layers
+        frame_layers = []
+        directory = root.attrib["layer_dir"]
+        open_layer = lambda file : Image.open(path.join(directory, file)).resize( frame.get_inner_size() )
+        for frame_layer in root.iter("frame_layer"):
+            render_if = lambda card : eval(frame_layer.attrib["render_if"].format(**card))
+            frame_layers.append( (render_if, open_layer(frame_layer.attrib["file"])) )
 
         # create derived fields
         derived_fields = dict()
@@ -71,6 +87,7 @@ class Frame():
                     symbol_sets[box.attrib["symbols"]]
             )
 
+        frame.frame_layers = frame_layers
         frame.boxes = text_boxes
         frame.derived_fields = derived_fields
 
@@ -92,6 +109,11 @@ class Frame():
         # TODO: consider moving this to it's own class
         intern_rect =[(self.boarder_width, self.boarder_width), (self.size[0]-self.boarder_width, self.size[1]-self.boarder_width)] 
         draw.rectangle(intern_rect, fill=self.bg_color)
+
+        # draw frame layers
+        for render_if,layer in self.frame_layers:
+            if render_if(card):
+                img.paste( layer, (self.boarder_width, self.boarder_width) )
 
         # draw the text boxes
         for name,box in self.boxes.items():
