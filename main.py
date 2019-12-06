@@ -36,11 +36,10 @@ if __name__ == "__main__":
     boxes["P/T"] = TextBox((3*size[0]/4, size[1]-32), 3*size[0]/4-bw, symbols)
 
     # initialize the frame
-    frame = Frame(boxes)
+    frame = Frame(boxes, derived_fields)
 
     # test CSV loader
     for card in csv_loader.cards_from("CardDesigns.csv"):
-        csv_loader.pop_derived_fields(card, derived_fields)
         print(card) # testing
         rcard = frame.render(card)
         rcard.save("Output/"+card["Name"].replace(" ", "")+".png") 
