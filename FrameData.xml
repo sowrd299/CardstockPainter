@@ -1,0 +1,28 @@
+<frame>
+
+	<derived_field name="P/T" eq="'{Power}/{Toughness}' if '{Power}' else ''"/>
+
+    <symbol_set name="symbols" dir="Symbols">
+        <symbol name="{W}" file="W.svg.png" />
+        <symbol name="{U}" file="U.svg.png" />
+        <symbol name="{B}" file="B.svg.png" />
+        <symbol name="{R}" file="R.svg.png" />
+        <symbol name="{G}" file="G.svg.png" />
+        <symbol name="{T}" file="T.svg.png" />
+    </symbol_set>
+
+    <symbol_set name="short_symbols" dir="Symbols">
+        <symbol name="W" file="W.svg.png" />
+        <symbol name="U" file="U.svg.png" />
+        <symbol name="B" file="B.svg.png" />
+        <symbol name="R" file="R.svg.png" />
+        <symbol name="G" file="G.svg.png" />
+    </symbol_set>
+
+    <text_box name="Name"    x="{bw}+8" y="{bw}+8"   w="{w}-{bw}*2-16" symbols="symbols"/>
+    <text_box name="CMC"     x="{bw}+8"  y="{bw}+32" w="{w}-{bw}*2-16" symbols="short_symbols"/>
+    <text_box name="Type"    x="{bw}+8"  y="{h}/3-32" w="{w}-{bw}*2-16" symbols="symbols"/>
+    <text_box name="Text"    x="{bw}+8"  y="{h}/3" w="{w}-{bw}*2-16" symbols="symbols"/>
+    <text_box name="P/T"     x="3*{w}/4" y="{h}-32" w="3*{w}/4-{bw}" symbols="symbols"/>
+
+</frame>
