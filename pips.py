@@ -27,7 +27,8 @@ class Pips():
                 if render_if(card, i):
                     img.paste(symbol, pos)
 
-            if end_when(card, i):
+            if self.end_when(card, i):
                 break
             
             pos = (pos[0] + self.step[0], pos[1] + self.step[1])
+            i += 1

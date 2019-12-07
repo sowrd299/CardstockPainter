@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw
 from text_box import TextBox
+from pips import Pips
 
 # for handling XML loading
 from xml.etree import ElementTree
@@ -30,13 +31,15 @@ class Frame():
     bg_color = (255, 255, 255)
 
     def __init__(self,
-            frame_layers : [("card => bool", Image.Image)] = None,
-            boxes : {str : TextBox} = None,
-            derived_fields : {str : "card => value"} = None ):
+            frame_layers : [("card => bool", Image.Image)] = [],
+            boxes : {str : TextBox} = dict(),
+            derived_fields : {str : "card => value"} = dict(),
+            pips : {str : Pips} = dict() ):
 
         self.frame_layers = frame_layers
-        self.boxes = boxes
+        self.boxes = boxes 
         self.derived_fields = derived_fields
+        self.pips = pips
 
     # returns the size of the frame excluding the boarder
     def get_inner_size(self):
@@ -53,6 +56,8 @@ class Frame():
             return eval(field_value.replace("'","'''").format(**card))
 
         frame = Frame()
+        frame_vars = { "w" : frame.size[0], "h" : frame.size[1], "bw" : frame.boarder_width }
+        eval_vars = lambda s : int(eval(s.format(**frame_vars)))
 
         tree = ElementTree.parse(file_path)
         root = tree.getroot()
@@ -77,7 +82,7 @@ class Frame():
 
             # setup image loading
             directory = symbol_set.attrib["dir"]
-            open_sym = lambda file : Image.open(path.expanduser(path.join(directory, file))
+            open_sym = lambda file : Image.open(path.expanduser(path.join(directory, file)))
 
             # build the symbol set
             #   using itter instead of find allows for symbol super and subsets to function automatically (though not efficiently)
@@ -85,8 +90,6 @@ class Frame():
 
         # create text boxes
         text_boxes = dict()
-        frame_vars = { "w" : frame.size[0], "h" : frame.size[1], "bw" : frame.boarder_width }
-        eval_vars = lambda s : eval(s.format(**frame_vars))
         for box in root.iter("text_box"):
             text_boxes[ box.attrib["name"] ] = TextBox(
                     (eval_vars(box.attrib["x"]), eval_vars(box.attrib["y"])),
@@ -94,10 +97,34 @@ class Frame():
                     symbol_sets[box.attrib["symbols"]] if ("symbols" in box.attrib) else dict()
             )
 
+        # create pips; also deal the fun the is naming a class in the plural
+        pipses = dict()
+        for pips in root.iter("pips"):
+
+            symbol_set = symbol_sets[pips.attrib["symbol_set"]]
+
+            # add each pip symbol
+            ps = []
+            for pip in pips.iter("pip"):
+                ps.append( (
+                    lambda card, i, s=pip.attrib["render_if"] : eval(s.format(i=i, **card)),
+                    symbol_set[pip.attrib["symbol"]]
+                ) )
+
+            # build the pips object
+            pipses[ pips.attrib["name"] ] = Pips(
+                (eval_vars(pips.attrib["x"]), eval_vars(pips.attrib["y"])),
+                (eval_vars(pips.attrib["x_step"]) if "x_step" in pips.attrib else 0,
+                eval_vars(pips.attrib["y_step"]) if "y_step" in pips.attrib else 0),
+                ps,
+                lambda card, i, s=pips.attrib["end_when"] : eval(s.format(i=i, **card))
+            )
+
         # assemble the frame and cleanup
         frame.frame_layers = frame_layers
         frame.boxes = text_boxes
         frame.derived_fields = derived_fields
+        frame.pips = pipses
 
         return frame
 
@@ -139,10 +166,12 @@ class Frame():
                 #print("Rendering frame layer") # TODO: Testing
                 img = self._composite( layer, img, (self.boarder_width, self.boarder_width) )
 
-        # draw the text boxes
+        # draw the text boxes and pips
         text_layer = self._new_blank_image()
         for name,box in self.boxes.items():
             box.render(text_layer, fields[name])
+        for name,pips in self.pips.items():
+            pips.render(text_layer, card) 
         img = self._composite(text_layer, img)
 
         return self.RenderedCard(img)
