@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from tools import DictTree
 from collections import defaultdict
 
@@ -29,6 +29,8 @@ class TextBox():
 
     # defaults
     text_color = (0,0,0)
+    line_spacing = 0
+    font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf")
 
     def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image} ):
         self.pos = pos
@@ -69,7 +71,7 @@ class TextBox():
         wrapped_text = ""
 
         def under_width(ext = ''):
-            return draw.multiline_textsize(wrapped_text + ext)[0] <= self.width
+            return draw.multiline_textsize(wrapped_text + ext, self.font, self.line_spacing)[0] <= self.width
 
         for i in range(len(text)):
             c = text[i]
@@ -109,8 +111,8 @@ class TextBox():
         while line_start_index > 0 and text[line_start_index-1] != "\n":
             line_start_index -= 1
         # calc the coords
-        x = draw.multiline_textsize(text[line_start_index:index-1])[0]
-        y = draw.multiline_textsize(text[:line_start_index-1])[1] if line_start_index > 0 else 0
+        x = draw.multiline_textsize(text[line_start_index:index-1], self.font, self.line_spacing)[0]
+        y = draw.multiline_textsize(text[:line_start_index-1], self.font, self.line_spacing)[1] if line_start_index > 0 else 0
         return (x,y) 
 
     # draw the given text onto the given box
@@ -125,7 +127,7 @@ class TextBox():
         # TODO: this is going to increase indexies...
 
         # rendering
-        draw.multiline_text(self.pos, wrapped_text, fill=self.text_color)
+        draw.multiline_text(self.pos, wrapped_text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
         char_size = draw.textsize("W") # assumes capital W largest letter
         for index, symbol in symbols.items():
             symbol_size = ( int(char_size[1] * symbol.size[0] / symbol.size[0]) , char_size[1])
