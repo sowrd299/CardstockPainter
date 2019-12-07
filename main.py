@@ -7,7 +7,7 @@ if __name__ == "__main__":
     frame = Frame.open_from_xml("FrameData.xml")
 
     # test CSV loader
-    for card in csv_loader.cards_from("CardDesigns.csv"):
+    for card in csv_loader.cards_from("CardData.csv"):
         print(card) # testing
         rcard = frame.render(card)
         rcard.save("Output/"+card["Name"].replace(" ", "")+".png") 
