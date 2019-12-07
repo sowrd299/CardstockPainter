@@ -77,7 +77,7 @@ class Frame():
 
             # setup image loading
             directory = symbol_set.attrib["dir"]
-            open_sym = lambda file : Image.open(path.join(directory, file))
+            open_sym = lambda file : Image.open(path.expanduser(path.join(directory, file))
 
             # build the symbol set
             #   using itter instead of find allows for symbol super and subsets to function automatically (though not efficiently)

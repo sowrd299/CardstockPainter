@@ -4,7 +4,7 @@ from frame import Frame
 if __name__ == "__main__":
     print("Starting...")
 
-    frame = Frame.open_from_xml("FrameData.xml")
+    frame = Frame.open_from_xml("/home/rnw/Dropbox/Games/Ashworld/AshworldCampaigns/FrameData.xml")
 
     # test CSV loader
     for card in csv_loader.cards_from("CardData.csv"):
