@@ -5,6 +5,11 @@ from pips import Pips
 # for handling XML loading
 from xml.etree import ElementTree
 from os import path
+import re
+
+# part of XML handling
+# a place for cashing regex expected to be seen often
+known_regex = dict()
 
 #returns fields derived from extant fields
 def get_derived_fields(item : dict, derived_fields : {str : "card => value"}):
@@ -46,19 +51,41 @@ class Frame():
         return tuple(i - 2*(self.boarder_width-1) for i in self.size)
 
     # creates a new frame, as defined by the given xml file
-    # TODO: handle getting data in different forms
+    # TODO: handle getting XML data in different forms
     # TODO: break this into multiple methods like a civilized programmer
+    # TODO: all these nest methods can't be efficient
+    # TODO: also maybe this whole thing should just be its own file
     @staticmethod
     def open_from_xml(file_path : str):
 
         # evaluates a parameterized field of a card
-        def eval_card_field(field_value, card):
-            return eval(field_value.replace("'","'''").format(**card))
+        def eval_card_field(field_value : str, card : dict, **args ):
 
+            def regex_matches(regex, text):
+                global known_regex
+                compiled_regex = None
+                if regex in known_regex:
+                    compiled_regex = known_regex[regex]
+                else:
+                    compiled_regex = re.compile(regex)
+                    known_regex[regex] = compiled_regex
+                return compiled_regex.search(text)
+                
+            context = card
+            if args:
+                context = dict(card, **args)
+
+            r = eval(field_value.replace("'","'''").format(**context))
+            return r
+
+        # setups the frame
         frame = Frame()
-        frame_vars = { "w" : frame.size[0], "h" : frame.size[1], "bw" : frame.boarder_width }
-        eval_vars = lambda s : int(eval(s.format(**frame_vars)))
 
+        # evaluates a peramiterized field of a pixel measurement
+        def eval_pixel_field(value : str, frame_vars = { "w" : frame.size[0], "h" : frame.size[1], "bw" : frame.boarder_width } ):
+            return int(eval(value.format(**frame_vars)))
+
+        # opens the xml
         tree = ElementTree.parse(file_path)
         root = tree.getroot()
 
@@ -92,8 +119,8 @@ class Frame():
         text_boxes = dict()
         for box in root.iter("text_box"):
             text_boxes[ box.attrib["name"] ] = TextBox(
-                    (eval_vars(box.attrib["x"]), eval_vars(box.attrib["y"])),
-                    eval_vars(box.attrib["w"]),
+                    (eval_pixel_field(box.attrib["x"]), eval_pixel_field(box.attrib["y"])),
+                    eval_pixel_field(box.attrib["w"]),
                     symbol_sets[box.attrib["symbols"]] if ("symbols" in box.attrib) else dict()
             )
 
@@ -107,17 +134,17 @@ class Frame():
             ps = []
             for pip in pips.iter("pip"):
                 ps.append( (
-                    lambda card, i, s=pip.attrib["render_if"] : eval(s.format(i=i, **card)),
+                    lambda card, i, s=pip.attrib["render_if"] : eval_card_field(s,card,i=i),
                     symbol_set[pip.attrib["symbol"]]
                 ) )
 
             # build the pips object
             pipses[ pips.attrib["name"] ] = Pips(
-                (eval_vars(pips.attrib["x"]), eval_vars(pips.attrib["y"])),
-                (eval_vars(pips.attrib["x_step"]) if "x_step" in pips.attrib else 0,
-                eval_vars(pips.attrib["y_step"]) if "y_step" in pips.attrib else 0),
+                (eval_pixel_field(pips.attrib["x"]), eval_pixel_field(pips.attrib["y"])),
+                (eval_pixel_field(pips.attrib["x_step"]) if "x_step" in pips.attrib else 0,
+                eval_pixel_field(pips.attrib["y_step"]) if "y_step" in pips.attrib else 0),
                 ps,
-                lambda card, i, s=pips.attrib["end_when"] : eval(s.format(i=i, **card))
+                lambda card, i, s=pips.attrib["end_when"] : eval_card_field(s,card,i=i)
             )
 
         # assemble the frame and cleanup
