@@ -83,7 +83,12 @@ class Frame():
 
         # evaluates a peramiterized field of a pixel measurement
         def eval_pixel_field(value : str, frame_vars = { "w" : frame.size[0], "h" : frame.size[1], "bw" : frame.boarder_width } ):
-            return int(eval(value.format(**frame_vars)))
+            r = eval(value.format(**frame_vars))
+            if isinstance(r, float):
+                r = int(r)
+            if isinstance(r, tuple):
+                r = tuple(int(i) for i in r)
+            return r
 
         # opens the xml
         tree = ElementTree.parse(file_path)
@@ -115,13 +120,23 @@ class Frame():
             #   using itter instead of find allows for symbol super and subsets to function automatically (though not efficiently)
             symbol_sets[ symbol_set.attrib["name"] ] = { sym.attrib["name"] : open_sym(sym.attrib["file"]) for sym in symbol_set.iter("symbol") }
 
+        # create type setting presents
+        type_settings = dict()
+        for type_setting in root.iter("type_setting"):
+            type_settings[type_setting.attrib["name"]] = {
+                setting : eval_pixel_field(type_setting.attrib[setting]) if setting != "font_file" else type_setting.attrib[setting]
+                for setting in ["size", "line_spacing", "color", "font_file"] if setting in type_setting.attrib
+            }
+
         # create text boxes
         text_boxes = dict()
         for box in root.iter("text_box"):
+            type_setting = type_settings[box.attrib["type_setting"]] if "type_setting" in box.attrib else dict()
             text_boxes[ box.attrib["name"] ] = TextBox(
                     (eval_pixel_field(box.attrib["x"]), eval_pixel_field(box.attrib["y"])),
                     eval_pixel_field(box.attrib["w"]),
-                    symbol_sets[box.attrib["symbols"]] if ("symbols" in box.attrib) else dict()
+                    symbol_sets[box.attrib["symbols"]] if ("symbols" in box.attrib) else dict(),
+                    **type_setting
             )
 
         # create pips; also deal the fun the is naming a class in the plural

@@ -30,12 +30,24 @@ class TextBox():
     # defaults
     text_color = (0,0,0)
     line_spacing = 0
-    font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf")
+    font_file = "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"
+    font_size = 10
+    font = ImageFont.truetype(font_file, font_size)
 
-    def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image} ):
+    def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image}, 
+                color = None, size = None, line_spaceing = None, font_file = None):
         self.pos = pos
         self.width = width
         self.symbols = DictTree(symbols)
+
+        if color:
+            self.text_color = color
+
+        if line_spaceing:
+            self.line_spacing = line_spaceing
+
+        if size or font_file:
+            self.font = ImageFont.truetype(font_file or self.font_file, size or self.size)
 
     # returns (<the text with symbol codes removed>, {(<symbol index> : <symbol>})
     # TODO: add index mapping, and return symbols by original index
