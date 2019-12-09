@@ -33,7 +33,6 @@ class TextBox():
     font_file = "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"
     font_size = 11
     font = ImageFont.truetype(font_file, font_size)
-    faux_bold = 1 # how many pixels by which to falsely increase the weight of the text; should not exceed 1
 
     def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image} = {},
             styles : [(str,"card=>(int,int)")] = [],
@@ -127,18 +126,25 @@ class TextBox():
         while line_start_index > 0 and text[line_start_index-1] != "\n":
             line_start_index -= 1
         # calc the coords
-        x = draw.multiline_textsize(text[line_start_index:index-1], self.font, self.line_spacing)[0]
+        x = draw.multiline_textsize(text[line_start_index:index], self.font, self.line_spacing)[0]
         y = draw.multiline_textsize(text[:line_start_index-1], self.font, self.line_spacing)[1] if line_start_index > 0 else 0
         return (x,y) 
 
     # emboldens the given range of the given text
+    # indexes are inclusive , inclusive
     def embolden_text(self, draw, text, start_index, end_index):
-        
-        # apply (faux) bols
-        for i in range(self.faux_bold):
-            pos = (self.pos[0] + i + 1, self.pos[1])
-            for j in range(3): # TODO: the dumbest way to do alpha reduction
-                draw.multiline_text(pos, text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
+
+        # apply (faux) bold; thinkens by one pixel and tripples alphas
+        lines = text[start_index:end_index+(len(text) if end_index<0 else 0)+1].split("\n")
+        i = start_index
+        for line in lines:
+            # for each line to bold, find that line
+            offset = self.get_coord_in_text(draw, text, i)
+            # apply the bold
+            pos = (self.pos[0] + offset[0] + 1, self.pos[1] + offset[1])
+            for j in range(3): # TODO: the dumbest way to do alpha reduction; not actually slow though
+                draw.multiline_text(pos, line, fill=self.text_color, font=self.font, spacing=self.line_spacing)
+            i += len(line) + 1
 
 
     # draw the given text onto the given box
@@ -158,7 +164,7 @@ class TextBox():
         for index, symbol in symbols.items():
             symbol_size = ( int(char_size[1] * symbol.size[0] / symbol.size[0]) , char_size[1])
             s = symbol.resize(symbol_size)
-            local_coords = self.get_coord_in_text(draw, wrapped_text, index_map_s_to_w.get_shifted_index(index))
+            local_coords = self.get_coord_in_text(draw, wrapped_text, index_map_s_to_w.get_shifted_index(index)-1)
             img_coords = ( int(self.pos[0] + local_coords[0]), int(self.pos[1] + local_coords[1]) )
             img.paste( s,  img_coords )
 
@@ -166,4 +172,4 @@ class TextBox():
         for style,range_func in self.styles:
             index_range = range_func({}) # TODO: actually get the card to do this correctly
             if style == "bold": # NOTE: "bold" term defined here
-                self.embolden_text(draw, wrapped_text, *index_range)
+                self.embolden_text(draw, wrapped_text, *(index_map_s_to_w.get_shifted_index(i) for i in index_range))
