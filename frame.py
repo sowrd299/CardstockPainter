@@ -131,11 +131,17 @@ class Frame():
         # create text boxes
         text_boxes = dict()
         for box in root.iter("text_box"):
+
+            styles = []
+            for style in box.iter("text_style"):
+                styles.append( (style.attrib["type"], lambda card, s=style.attrib["range"] : eval_card_field(s, card)))
+            
             type_setting = type_settings[box.attrib["type_setting"]] if "type_setting" in box.attrib else dict()
             text_boxes[ box.attrib["name"] ] = TextBox(
                     (eval_pixel_field(box.attrib["x"]), eval_pixel_field(box.attrib["y"])),
                     eval_pixel_field(box.attrib["w"]),
                     symbol_sets[box.attrib["symbols"]] if ("symbols" in box.attrib) else dict(),
+                    styles,
                     **type_setting
             )
 

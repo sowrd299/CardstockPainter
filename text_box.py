@@ -35,11 +35,14 @@ class TextBox():
     font = ImageFont.truetype(font_file, font_size)
     faux_bold = 1 # how many pixels by which to falsely increase the weight of the text; should not exceed 1
 
-    def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image}, 
-                color = None, size = None, line_spaceing = None, font_file = None):
+    def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image} = {},
+            styles : [(str,"card=>(int,int)")] = [],
+            color = None, size = None, line_spaceing = None, font_file = None
+    ):
         self.pos = pos
         self.width = width
         self.symbols = DictTree(symbols)
+        self.styles = styles # style describe when to bold, when to italicize
 
         if color:
             self.text_color = color
@@ -128,6 +131,16 @@ class TextBox():
         y = draw.multiline_textsize(text[:line_start_index-1], self.font, self.line_spacing)[1] if line_start_index > 0 else 0
         return (x,y) 
 
+    # emboldens the given range of the given text
+    def embolden_text(self, draw, text, start_index, end_index):
+        
+        # apply (faux) bols
+        for i in range(self.faux_bold):
+            pos = (self.pos[0] + i + 1, self.pos[1])
+            for j in range(3): # TODO: the dumbest way to do alpha reduction
+                draw.multiline_text(pos, text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
+
+
     # draw the given text onto the given box
     def render(self, img : Image.Image, text : str):
 
@@ -137,13 +150,10 @@ class TextBox():
         # processing
         symbol_text, symbols = self.find_symbols(text)
         wrapped_text, index_map_s_to_w = self.wrap_text(draw, symbol_text)
-        # TODO: this is going to increase indexies...
 
         # rendering, including faux bold
-        # TODO: make a more robust faux bold
-        for i in range(self.faux_bold+1):
-            pos = (self.pos[0]+i, self.pos[1])
-            draw.multiline_text(pos, wrapped_text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
+        # TODO: make a more robust faux bold that isn't all or nothing
+        draw.multiline_text(self.pos, wrapped_text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
         char_size = draw.textsize("W") # assumes capkkital W largest letter
         for index, symbol in symbols.items():
             symbol_size = ( int(char_size[1] * symbol.size[0] / symbol.size[0]) , char_size[1])
@@ -151,3 +161,9 @@ class TextBox():
             local_coords = self.get_coord_in_text(draw, wrapped_text, index_map_s_to_w.get_shifted_index(index))
             img_coords = ( int(self.pos[0] + local_coords[0]), int(self.pos[1] + local_coords[1]) )
             img.paste( s,  img_coords )
+
+        # apply styles
+        for style,range_func in self.styles:
+            index_range = range_func({}) # TODO: actually get the card to do this correctly
+            if style == "bold": # NOTE: "bold" term defined here
+                self.embolden_text(draw, wrapped_text, *index_range)
