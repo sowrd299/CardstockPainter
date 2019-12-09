@@ -29,10 +29,11 @@ class TextBox():
 
     # defaults
     text_color = (0,0,0)
-    line_spacing = 0
+    line_spacing = 1
     font_file = "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf"
-    font_size = 10
+    font_size = 11
     font = ImageFont.truetype(font_file, font_size)
+    faux_bold = 1 # how many pixels by which to falsely increase the weight of the text; should not exceed 1
 
     def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image}, 
                 color = None, size = None, line_spaceing = None, font_file = None):
@@ -138,9 +139,12 @@ class TextBox():
         wrapped_text, index_map_s_to_w = self.wrap_text(draw, symbol_text)
         # TODO: this is going to increase indexies...
 
-        # rendering
-        draw.multiline_text(self.pos, wrapped_text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
-        char_size = draw.textsize("W") # assumes capital W largest letter
+        # rendering, including faux bold
+        # TODO: make a more robust faux bold
+        for i in range(self.faux_bold+1):
+            pos = (self.pos[0]+i, self.pos[1])
+            draw.multiline_text(pos, wrapped_text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
+        char_size = draw.textsize("W") # assumes capkkital W largest letter
         for index, symbol in symbols.items():
             symbol_size = ( int(char_size[1] * symbol.size[0] / symbol.size[0]) , char_size[1])
             s = symbol.resize(symbol_size)
