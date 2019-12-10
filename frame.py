@@ -1,4 +1,4 @@
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageTk
 from text_box import TextBox
 from pips import Pips
 
@@ -27,6 +27,8 @@ class Frame():
             self.img = img
         def save(self, file):
             self.img.save(file)
+        def get_tk_photoimage(self):
+            return ImageTk.PhotoImage(self.img)
 
 
     # defaults
