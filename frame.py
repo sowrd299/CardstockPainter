@@ -37,14 +37,13 @@ class Frame():
 
     def __init__(self,
             frame_layers : [("card => bool", Image.Image)] = [],
-            boxes : {str : TextBox} = dict(),
+            boxes : {str : TextBox or Pips} = dict(),
             derived_fields : {str : "card => value"} = dict(),
-            pips : {str : Pips} = dict() ):
+    ):
 
         self.frame_layers = frame_layers
         self.boxes = boxes 
         self.derived_fields = derived_fields
-        self.pips = pips
 
     # returns the size of the frame excluding the boarder
     def get_inner_size(self):
@@ -61,6 +60,14 @@ class Frame():
         # evaluates a parameterized field of a card
         def eval_card_field(field_value : str, card : dict, **args ):
 
+            # HERE ARE THE FUNCTIONS  CALLABLE FROM CARD FIELDS
+
+            def indexes_of(matches):
+                if matches:
+                    return [(match.start(), match.end()) for match in matches]
+                else:
+                    return None
+
             def regex_matches(regex, text):
                 global known_regex
                 compiled_regex = None
@@ -69,7 +76,15 @@ class Frame():
                 else:
                     compiled_regex = re.compile(regex)
                     known_regex[regex] = compiled_regex
-                return compiled_regex.search(text)
+                matches = []
+                pos = 0
+                while True:
+                    match = compiled_regex.search(text, pos)
+                    if match:
+                        matches.append(match)
+                        pos = match.end()
+                    else:
+                        return matches
                 
             context = card
             if args:
@@ -129,7 +144,7 @@ class Frame():
             }
 
         # create text boxes
-        text_boxes = dict()
+        boxes = dict()
         for box in root.iter("text_box"):
 
             styles = []
@@ -137,16 +152,16 @@ class Frame():
                 styles.append( (style.attrib["type"], lambda card, s=style.attrib["range"] : eval_card_field(s, card)))
             
             type_setting = type_settings[box.attrib["type_setting"]] if "type_setting" in box.attrib else dict()
-            text_boxes[ box.attrib["name"] ] = TextBox(
+            boxes[ box.attrib["name"] ] = TextBox(
                     (eval_pixel_field(box.attrib["x"]), eval_pixel_field(box.attrib["y"])),
                     eval_pixel_field(box.attrib["w"]),
+                    lambda card, s = box.attrib["render_text"] if "render_text" in box.attrib else "'{{{0}}}'".format(box.attrib["name"]) : eval_card_field(s, card),
                     symbol_sets[box.attrib["symbols"]] if ("symbols" in box.attrib) else dict(),
                     styles,
                     **type_setting
             )
 
         # create pips; also deal the fun the is naming a class in the plural
-        pipses = dict()
         for pips in root.iter("pips"):
 
             symbol_set = symbol_sets[pips.attrib["symbol_set"]]
@@ -160,7 +175,7 @@ class Frame():
                 ) )
 
             # build the pips object
-            pipses[ pips.attrib["name"] ] = Pips(
+            boxes[ pips.attrib["name"] ] = Pips(
                 (eval_pixel_field(pips.attrib["x"]), eval_pixel_field(pips.attrib["y"])),
                 (eval_pixel_field(pips.attrib["x_step"]) if "x_step" in pips.attrib else 0,
                 eval_pixel_field(pips.attrib["y_step"]) if "y_step" in pips.attrib else 0),
@@ -170,9 +185,8 @@ class Frame():
 
         # assemble the frame and cleanup
         frame.frame_layers = frame_layers
-        frame.boxes = text_boxes
+        frame.boxes = boxes
         frame.derived_fields = derived_fields
-        frame.pips = pipses
 
         return frame
 
@@ -200,7 +214,7 @@ class Frame():
 
         # setup the card
         df = get_derived_fields(card, self.derived_fields)
-        fields = dict(card, **df)
+        derived_card = dict(card, **df)
 
         # create the boarder (by subtraction)
         # TODO: consider moving this to it's own class
@@ -210,16 +224,14 @@ class Frame():
 
         # draw frame layers
         for render_if,layer in self.frame_layers:
-            if render_if(card):
+            if render_if(derived_card):
                 #print("Rendering frame layer") # TODO: Testing
                 img = self._composite( layer, img, (self.boarder_width, self.boarder_width) )
 
         # draw the text boxes and pips
         text_layer = self._new_blank_image()
-        for name,box in self.boxes.items():
-            box.render(text_layer, fields[name])
-        for name,pips in self.pips.items():
-            pips.render(text_layer, card) 
+        for name, box in self.boxes.items():
+            box.render(text_layer, derived_card)
         img = self._composite(text_layer, img)
 
         return self.RenderedCard(img)

@@ -34,12 +34,13 @@ class TextBox():
     font_size = 11
     font = ImageFont.truetype(font_file, font_size)
 
-    def __init__(self, pos : (int,int), width : int, symbols : {str : Image.Image} = {},
-            styles : [(str,"card=>(int,int)")] = [],
+    def __init__(self, pos : (int,int), width : int, render_text : "card => str",
+            symbols : {str : Image.Image} = {}, styles : [(str,"card=>(int,int)")] = [],
             color = None, size = None, line_spaceing = None, font_file = None
     ):
         self.pos = pos
         self.width = width
+        self.render_text = render_text
         self.symbols = DictTree(symbols)
         self.styles = styles # style describe when to bold, when to italicize
 
@@ -148,9 +149,10 @@ class TextBox():
 
 
     # draw the given text onto the given box
-    def render(self, img : Image.Image, text : str):
+    def render(self, img : Image.Image, card):
 
         # setup
+        text = self.render_text(card)
         draw = ImageDraw.Draw(img)
 
         # processing
@@ -170,6 +172,9 @@ class TextBox():
 
         # apply styles
         for style,range_func in self.styles:
-            index_range = range_func({}) # TODO: actually get the card to do this correctly
+            index_ranges = range_func(card) # TODO: actually get the card to do this correctly
+            if not index_ranges: # NOTE: enables styles to be scipped by returning False or None
+                continue
             if style == "bold": # NOTE: "bold" term defined here
-                self.embolden_text(draw, wrapped_text, *(index_map_s_to_w.get_shifted_index(i) for i in index_range))
+                for index_range in index_ranges if type(index_ranges[0]) == tuple else [index_ranges]: # supports getting a list of index ranges
+                    self.embolden_text(draw, wrapped_text, *(index_map_s_to_w.get_shifted_index(i) for i in index_range))
