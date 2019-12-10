@@ -18,7 +18,10 @@ def refresh():
 
     # the card display
     # TODO: don't re-render if don't need to
-    card_disp.config(image = photo)
+    if finished:
+        card_disp.config(image = "", text = "\n\nNo more cards.\n\n")
+    else:
+        card_disp.config(image = photo)
 
     # the next button
     next_actions = []
@@ -32,24 +35,32 @@ def apply_actions():
 
     global pdf
 
-    if will_save.get():
-        rcard.save("Output/"+card["Name"].replace(" ","")+".png")
+    if not finished:
 
-    if will_pdf.get():
-        if not pdf:
-            pdf = PdfRenderer("./output.pdf")
-        pdf.add(rcard.get_image())
+        if will_save.get():
+            rcard.save("Output/"+card["Name"].replace(" ","")+".png")
+
+        if will_pdf.get():
+            if not pdf:
+                pdf = PdfRenderer("./output.pdf")
+            pdf.add(rcard.get_image())
 
 # advances to the next card
 def next_card():
 
     global card
+    global finished
 
     apply_actions()
 
-    card = next(cards)
-    print("Card is now",card["Name"])
-    render()
+    if not finished:
+        try:
+            card = next(cards)
+            print("Card is now",card["Name"])
+            render()
+        except StopIteration as e:
+            finished = True
+
     refresh()
 
 
@@ -70,6 +81,7 @@ if __name__ == "__main__":
     root.title("Card Renderer")
     cards =  csv_loader.cards_from("CardData.csv")
     pdf = None
+    finished = False # tracks if have made it to the end of the list of cards
 
     # variables
     will_save = tkinter.IntVar(root)
