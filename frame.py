@@ -27,6 +27,8 @@ class Frame():
             self.img = img
         def save(self, file):
             self.img.save(file)
+        def get_image(self):
+            return self.img
         def get_tk_photoimage(self):
             return ImageTk.PhotoImage(self.img)
 
