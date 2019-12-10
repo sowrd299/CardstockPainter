@@ -10,7 +10,7 @@ def filter_complex_chars(c : str):
     filters['\u201d'] = '"'
     filters['\u2013'] = '-'
     filters['\u2014'] = '-'
-    filters['\u2019'] = '-'
+    filters['\u2019'] = '\''
     if c in filters:
         return filters[c]
     return c

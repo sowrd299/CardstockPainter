@@ -89,7 +89,11 @@ class Frame():
                         pos = match.end()
                     else:
                         return matches
+
+            All = (0,-1)
                 
+            # Assemble the context, evaluate and return
+
             context = card
             if args:
                 context = dict(card, **args)

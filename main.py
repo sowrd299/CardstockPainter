@@ -92,7 +92,7 @@ if __name__ == "__main__":
     card_disp.pack()
 
     checkboxes = tkinter.Frame(root)
-    save_box = tkinter.Checkbutton(checkboxes, text="Save Card", variable=will_save, command=refresh)
+    save_box = tkinter.Checkbutton(checkboxes, text="Save Image", variable=will_save, command=refresh)
     save_box.pack(side = tkinter.LEFT)
     pdf_box = tkinter.Checkbutton(checkboxes, text="Add to PDF", variable=will_pdf, command=refresh)
     pdf_box.pack(side = tkinter.LEFT)
