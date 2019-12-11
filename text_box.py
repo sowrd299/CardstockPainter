@@ -152,27 +152,42 @@ class TextBox():
 		#body_alpha_thress = 230 # pixels above this alpha are considered too important to effect
 		pixels = img.load()
 
+		difs = dict()
 		for i in range(area_w+1): # TODO: use a more robust system for finding pixels that go out of bounds than "+1"
 			x = pos[0] + i
 			for j in range(area_h+1):
 				y = pos[1] + j
 				#if pixels[x,y][3] < body_alpha_thress:
-				weight = 0 
-				weight_divis = 0
-				edge_count = 0
-				for x_off in range(1):
-					for y_off in range(1):
-						coef = 1#(1 if x_off == 0 else 0) + (1 if y_off == 0 else 0) + 1
-						weight += coef * pixels[x+x_off, y+y_off][3]/255
-						weight_divis += coef
-						edge_count += 1 if pixels[x+x_off, y+y_off][3] else 0
+				#weight = 0 
+				#weight_divis = 0
+				max_alpha = 0
+				min_alpha = 255
+				#edge_count = 0
+				for x_off in range(-1, 2):
+					for y_off in range(-1, 2):
+						alpha = pixels[x+x_off,y+y_off][3]
+						max_alpha = max(max_alpha, alpha)
+						min_alpha = min(min_alpha, alpha)
+						#coef = 1#(1 if x_off == 0 else 0) + (1 if y_off == 0 else 0) + 1
+						#weight += coef * pixels[x+x_off, y+y_off][3]/255
+						#weight_divis += coef
+						#edge_count += 1 if pixels[x+x_off, y+y_off][3] else 0
 					# TODO: handle going out of bounds, maybe just by catching
 					# if pixels[x+x_off, y+y_off][3] < edge_alpha_thresh:
-				pixels[x,y] = (
-					*( int( color[i] + (v-color[i]) * (math.pow(4*(weight/weight_divis)-2,3)+8)/16) for i,v in enumerate(self.text_color) ),
-				#	*( int( color[i] + (v-color[i]) * (edge_count/16) ) for i,v in enumerate(self.text_color) ),
-					pixels[x,y][3]
-				)
+				difs[(x,y)] = max_alpha-min_alpha
+
+		for i in range(area_w+1): # TODO: use a more robust system for finding pixels that go out of bounds than "+1"
+			x = pos[0] + i
+			for j in range(area_h+1):
+				y = pos[1] + j
+
+				mask_val =  pixels[x,y][3]/255
+				pixels[x,y] = tuple( int( (*color,difs[(x,y)])[i] * (1-mask_val) + v * (mask_val) ) for i,v in enumerate(pixels[x,y]) )
+				# "Embosing" version
+				#pixels[x,y] = (
+				#	*( int( color[i] + (v-color[i]) * (math.pow(4*(weight/weight_divis)-2,3)+8)/16) for i,v in enumerate(self.text_color) ),
+				#	pixels[x,y][3]
+				#)
 
 	# applies a given style to a given range of text
 	# takes the style as a callback that applies the style to a given line of text at
