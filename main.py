@@ -23,6 +23,10 @@ def refresh():
 	else:
 		card_disp.config(image = photo)
 
+	# the pdf check box (tracks curser)
+	if pdf:
+		pdf_box.config(text = "Add to Pdf\n(Page {0}, Row {2}, Column {1})".format(*pdf.get_next_position()))
+
 	# the next button
 	next_actions = []
 	if will_save.get():
