@@ -42,7 +42,7 @@ def apply_actions():
 	if not finished:
 
 		if will_save.get():
-			rcard.save("Output/"+card["Name"].replace(" ","")+".png")
+			rcard.save("/home/rnw/Documenten/AshworldLackeyCCG/sets/setimages/Starter/"+card["Name"].replace(" ","")+".jpg")
 
 		if will_pdf.get():
 			if not pdf:
@@ -83,7 +83,7 @@ if __name__ == "__main__":
 	frame = Frame.open_from_xml("/home/rnw/Dropbox/Games/Ashworld/AshworldCampaigns/FrameData.xml")
 	root = tkinter.Tk()
 	root.title("Card Renderer")
-	cards =  csv_loader.cards_from("CardData.csv")
+	cards =  csv_loader.cards_from("/home/rnw/Documenten/AshworldLackeyCCG/sets/carddata.txt")
 	pdf = None
 	finished = False # tracks if have made it to the end of the list of cards
 

@@ -26,7 +26,10 @@ class Frame():
 		def __init__(self, img):
 			self.img = img
 		def save(self, file):
-			self.img.save(file)
+			img = self.img
+			if ".jpg" in file:
+				img = img.convert("RGB")
+			img.save(file)
 		def get_image(self):
 			return self.img
 		def get_tk_photoimage(self):
