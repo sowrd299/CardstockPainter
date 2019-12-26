@@ -1,15 +1,45 @@
 import tkinter
+from tkinter import filedialog
+
+# a class for a UI element that opens files
+class FileOpenerUI():
+
+	not_loaded_text = "NO FILE LOADED"
+
+	def __init__(self, name, root, on_load, file_class = open):
+
+		self.name = name
+		self.root = tkinter.Frame(root)
+		self.on_load = on_load
+		self.file_class = file_class
+
+		# the UI itself
+		self.name_label = tkinter.Label(self.root, text="{0}: ".format(name))
+		self.name_label.pack(side = tkinter.LEFT)
+		self.file_label = tkinter.Label(self.root, text=self.not_loaded_text)
+		self.file_label.pack(side = tkinter.LEFT)
+		self.button = tkinter.Button(self.root, text="Open", command=self.load)
+		self.button.pack(side = tkinter.LEFT)
+
+	def pack(self, *args, **kwargs):
+		self.root.pack(*args, **kwargs)
+
+	def load(self):
+
+		path = filedialog.askopenfilename(title="Open {0}".format(self.name))
+		file = self.file_class(path)
+		self.file_label.config(text = path)
+		self.on_load(file)
+
 
 class RendererUI():
 
 	def __init__(self, frame_class, card_class, window):
 
 		# basicis
-		self.frame_class = frame_class
-		self.frame = self.frame_class("/home/rnw/Dropbox/Games/Ashworld/AshworldCampaigns/FrameData.xml")
-		self.card_class = card_class
-		self.cards = self.card_class("/home/rnw/Documenten/AshworldLackeyCCG/sets/carddata.txt")
 		self.root = tkinter.Frame(window)
+		self.frame = None
+		self.cards = None
 
 		# misc state variables
 		self.pdf = None
@@ -20,10 +50,17 @@ class RendererUI():
 		self.will_save = tkinter.IntVar(self.root)
 		self.will_pdf = tkinter.IntVar(self.root)
 
-		# setup gui
+		# file loading
+		self.frame_loader = FileOpenerUI("Frame Data", self.root, self.set_frame, frame_class)
+		self.frame_loader.pack()
+		self.card_loader = FileOpenerUI("Card Data", self.root, self.set_cards, card_class)
+		self.card_loader.pack()
+
+		# card disp gui
 		self.card_disp = tkinter.Label(self.root)
 		self.card_disp.pack()
 
+		# action checkboxes
 		self.checkboxes = tkinter.Frame(self.root)
 		self.save_box = tkinter.Checkbutton(self.checkboxes, text="Save Image", variable=self.will_save, command=self.refresh)
 		self.save_box.pack(side = tkinter.LEFT)
@@ -31,6 +68,7 @@ class RendererUI():
 		self.pdf_box.pack(side = tkinter.LEFT)
 		self.checkboxes.pack()
 
+		# control buttons
 		self.buttons = tkinter.Frame(self.root)
 		self.next_button = tkinter.Button(self.buttons,text="Next", command=self.next_card)
 		self.next_button.pack(side = tkinter.LEFT)
@@ -40,7 +78,16 @@ class RendererUI():
 
 		# begin
 		self.root.pack()
-		self.next_card()
+
+	def set_frame(self, frame):
+		self.frame = frame
+		if self.cards:
+			self.next_card()
+
+	def set_cards(self, cards):
+		self.cards = cards
+		if self.frame:
+			self.next_card()
 
 	def render(self):
 

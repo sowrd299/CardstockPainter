@@ -6,6 +6,7 @@ from gui import RendererUI
 
 
 if __name__ == "__main__":
+
 	print("Starting...")
 
 	# setup basics
