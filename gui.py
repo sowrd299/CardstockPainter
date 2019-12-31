@@ -1,5 +1,6 @@
 import tkinter
 from tkinter import filedialog
+from pdf_renderer import PdfRenderer
 
 # a class for a UI element that opens files
 class FileOpenerUI():
@@ -20,6 +21,22 @@ class FileOpenerUI():
 		self.file_label.pack(side = tkinter.LEFT)
 		self.button = tkinter.Button(self.root, text="Open", command=self.load)
 		self.button.pack(side = tkinter.LEFT)
+
+		# turn off hidden files
+		try:
+			# call a dummy dialog with an impossible option to initialize the file
+			# dialog without really getting a dialog window; this will throw a
+			# TclError, so we need a try...except :
+			try:
+				root.tk.call('tk_getOpenFile', '-foobarbaz')
+			except TclError:
+				pass
+			# now set the magic variables accordingly
+			root.tk.call('set', '::tk::dialog::file::showHiddenBtn', '1')
+			root.tk.call('set', '::tk::dialog::file::showHiddenVar', '0')
+		except:
+			pass
+
 
 	def pack(self, *args, **kwargs):
 		self.root.pack(*args, **kwargs)
@@ -124,7 +141,7 @@ class RendererUI():
 		if self.will_pdf.get():
 			if not self.pdf:
 				self.pdf = PdfRenderer("./output.pdf")
-			pdf.add(self.rcard.get_image())
+			self.pdf.add(self.rcard.get_image())
 
 	# advances to the next card
 	def next_card(self):
