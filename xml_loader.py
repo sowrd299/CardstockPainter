@@ -110,10 +110,23 @@ def frame_from(file_path : str):
     # create type setting presents
     type_settings = dict()
     for type_setting in root.iter("type_setting"):
-        type_settings[type_setting.attrib["name"]] = {
-            setting : eval_pixel_field(type_setting.attrib[setting]) if setting != "font_file" else type_setting.attrib[setting]
-            for setting in ["size", "line_spacing", "color", "font_file"] if setting in type_setting.attrib
-        }
+        # the type setting to inherit from
+        try:
+            inherit = type_settings[type_setting.attrib["inherit"]] if "inherit" in type_setting.attrib else dict()
+        except KeyError as e:
+            print('Invalid type setting inheritence; Type setting "{}" does not exist!'.format(type_setting.attrib["inherit"]))
+        # the various settings of the type setting
+        d = dict()
+        for setting in ["size", "line_spacing", "color", "font_file"]:
+            if setting in type_setting.attrib:
+                d[setting] = eval_pixel_field(type_setting.attrib[setting]) if setting != "font_file" else type_setting.attrib[setting]
+            elif setting in inherit:
+                d[setting] = inherit[setting]
+        try:
+            type_settings[type_setting.attrib["name"]] = d
+        except KeyError as e:
+            print('Invalid type setting; missing "name"!')
+    print("Loaded type settings {}...".format(", ".join(type_settings)))
 
     # create text boxes
     boxes = dict()
@@ -133,7 +146,7 @@ def frame_from(file_path : str):
                 **type_setting
         )
 
-    # create pips; also deal the fun the is naming a class in the plural
+    # create pips; also deal with the fun the is naming a class in the plural
     for pips in root.iter("pips"):
 
         symbol_set = symbol_sets[pips.attrib["symbol_set"]]
