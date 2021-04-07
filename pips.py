@@ -20,15 +20,12 @@ class Pips():
 		# walk through the indexes of pips
 		pos = self.pos
 		i = 1
-		while True:
+		while not self.end_when(card, i):
 
 			#render all applicable pips at the index
 			for render_if, symbol in self.pips:
 				if render_if(card, i):
 					img.paste(symbol, pos)
-
-			if self.end_when(card, i):
-				break
 			
 			pos = (pos[0] + self.step[0], pos[1] + self.step[1])
 			i += 1
