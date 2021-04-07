@@ -79,7 +79,7 @@ class EntriesUI(tkinter.Frame):
 # Then main UI for the program
 class RendererUI():
 
-	def __init__(self, frame_class, card_class, window):
+	def __init__(self, frame_class, card_class, window, initialdir="."):
 
 		# basicis
 		self.root = tkinter.Frame(window)
@@ -98,11 +98,26 @@ class RendererUI():
 		self.str_delimiter = tkinter.StringVar(self.root, '"')
 
 		# file loading
-		self.frame_loader = FileOpenerUI("Frame Data", self.root, self.set_frame, frame_class, filetypes=[("XML","*.xml")])
+		self.frame_loader = FileOpenerUI(
+			"Frame Data",
+			self.root,
+			self.set_frame,
+			frame_class,
+			filetypes=[("XML","*.xml")],
+			initialdir=initialdir
+		)
 		self.frame_loader.pack()
 		self.delimiter_uis = EntriesUI(self.root, {"Values Delimiter": self.val_delimiter, "Strings Delimiter": self.str_delimiter}, width=3)
 		self.delimiter_uis.pack()
-		self.card_loader = FileOpenerUI("Card Data", self.root, self.set_cards, card_class, (self.val_delimiter, self.str_delimiter), filetypes=[("CSV","*.csv")])
+		self.card_loader = FileOpenerUI(
+			"Card Data",
+			self.root,
+			self.set_cards,
+			card_class,
+			(self.val_delimiter, self.str_delimiter),
+			filetypes=[("CSV","*.csv"),("TSV","*.tsv")],
+			initialdir=initialdir
+		)
 		self.card_loader.pack()
 
 		# card disp gui
