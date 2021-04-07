@@ -7,13 +7,15 @@ class FileOpenerUI():
 
 	not_loaded_text = "NO FILE LOADED"
 
-	def __init__(self, name, root, on_load, file_class = open, class_args = []):
+	def __init__(self, name, root, on_load, file_class = open, class_args = [], *args, **kwargs):
 
 		self.name = name
 		self.root = tkinter.Frame(root)
 		self.on_load = on_load
 		self.file_class = file_class
 		self.class_args = class_args # arguments to be passed in to the opener class, as tk variables
+		self.args = args
+		self.kwargs = kwargs
 
 		# the UI itself
 		self.name_label = tkinter.Label(self.root, text="{0}: ".format(name))
@@ -44,7 +46,7 @@ class FileOpenerUI():
 
 	def load(self):
 
-		path = filedialog.askopenfilename(title="Open {0}".format(self.name))
+		path = filedialog.askopenfilename(title="Open {0}".format(self.name), *self.args, **self.kwargs)
 		if path:
 			file = self.file_class(path, *(arg.get() for arg in self.class_args) )
 			self.file_label.config(text = path)
@@ -92,15 +94,15 @@ class RendererUI():
 		# variables
 		self.will_save = tkinter.IntVar(self.root)
 		self.will_pdf = tkinter.IntVar(self.root)
-		self.val_delimiter = tkinter.StringVar(self.root, "")
+		self.val_delimiter = tkinter.StringVar(self.root, ",")
 		self.str_delimiter = tkinter.StringVar(self.root, '"')
 
 		# file loading
-		self.frame_loader = FileOpenerUI("Frame Data", self.root, self.set_frame, frame_class)
+		self.frame_loader = FileOpenerUI("Frame Data", self.root, self.set_frame, frame_class, filetypes=[("XML","*.xml")])
 		self.frame_loader.pack()
 		self.delimiter_uis = EntriesUI(self.root, {"Values Delimiter": self.val_delimiter, "Strings Delimiter": self.str_delimiter}, width=3)
 		self.delimiter_uis.pack()
-		self.card_loader = FileOpenerUI("Card Data", self.root, self.set_cards, card_class, (self.val_delimiter, self.str_delimiter))
+		self.card_loader = FileOpenerUI("Card Data", self.root, self.set_cards, card_class, (self.val_delimiter, self.str_delimiter), filetypes=[("CSV","*.csv")])
 		self.card_loader.pack()
 
 		# card disp gui
