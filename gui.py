@@ -7,12 +7,13 @@ class FileOpenerUI():
 
 	not_loaded_text = "NO FILE LOADED"
 
-	def __init__(self, name, root, on_load, file_class = open):
+	def __init__(self, name, root, on_load, file_class = open, class_args = []):
 
 		self.name = name
 		self.root = tkinter.Frame(root)
 		self.on_load = on_load
 		self.file_class = file_class
+		self.class_args = class_args # arguments to be passed in to the opener class, as tk variables
 
 		# the UI itself
 		self.name_label = tkinter.Label(self.root, text="{0}: ".format(name))
@@ -29,13 +30,13 @@ class FileOpenerUI():
 			# TclError, so we need a try...except :
 			try:
 				root.tk.call('tk_getOpenFile', '-foobarbaz')
-			except TclError:
+			except tkinter.TclError:
 				pass
 			# now set the magic variables accordingly
 			root.tk.call('set', '::tk::dialog::file::showHiddenBtn', '1')
 			root.tk.call('set', '::tk::dialog::file::showHiddenVar', '0')
-		except:
-			pass
+		except Exception as e:
+			print("Failed to hide hidden files! {}: {}!".format(type(e), e))
 
 
 	def pack(self, *args, **kwargs):
@@ -44,11 +45,36 @@ class FileOpenerUI():
 	def load(self):
 
 		path = filedialog.askopenfilename(title="Open {0}".format(self.name))
-		file = self.file_class(path)
-		self.file_label.config(text = path)
-		self.on_load(file)
+		if path:
+			file = self.file_class(path, *(arg.get() for arg in self.class_args) )
+			self.file_label.config(text = path)
+			self.on_load(file)
+		else:
+			print("Opening canceled, aborting...")
 
 
+
+# A UI for a number of text entries
+class EntriesUI(tkinter.Frame):
+
+	class Entry():
+		def __init__(self, label, entry):
+			self.label = label
+			self.entry = entry
+
+	def __init__(self, root, entries : {str, 'variable'}, *args, **kwargs):
+		super().__init__(root)
+		self.entries = {}
+		for label, variable in entries.items():
+			label_ui = tkinter.Label(self, text="{}: ".format(label))
+			entry = tkinter.Entry(self, textvariable=variable, *args, **kwargs)
+			self.entries[label] = self.Entry(label_ui, entry) 
+			label_ui.pack(side = tkinter.LEFT)
+			entry.pack(side = tkinter.LEFT)
+
+
+
+# Then main UI for the program
 class RendererUI():
 
 	def __init__(self, frame_class, card_class, window):
@@ -66,11 +92,15 @@ class RendererUI():
 		# variables
 		self.will_save = tkinter.IntVar(self.root)
 		self.will_pdf = tkinter.IntVar(self.root)
+		self.val_delimiter = tkinter.StringVar(self.root, "")
+		self.str_delimiter = tkinter.StringVar(self.root, '"')
 
 		# file loading
 		self.frame_loader = FileOpenerUI("Frame Data", self.root, self.set_frame, frame_class)
 		self.frame_loader.pack()
-		self.card_loader = FileOpenerUI("Card Data", self.root, self.set_cards, card_class)
+		self.delimiter_uis = EntriesUI(self.root, {"Values Delimiter": self.val_delimiter, "Strings Delimiter": self.str_delimiter}, width=3)
+		self.delimiter_uis.pack()
+		self.card_loader = FileOpenerUI("Card Data", self.root, self.set_cards, card_class, (self.val_delimiter, self.str_delimiter))
 		self.card_loader.pack()
 
 		# card disp gui
@@ -152,7 +182,12 @@ class RendererUI():
 
 			try:
 				self.card = next(self.cards)
-				print("Card is now",self.card["Name"])
+
+				try:
+					print("Card is now",self.card["Name"])
+				except KeyError as e: # handle games where cards don't have a name
+					print("Card is now",self.card)
+
 				self.render()
 			except StopIteration as e:
 				self.finished = True

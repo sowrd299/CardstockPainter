@@ -15,8 +15,12 @@ def filter_complex_chars(c : str):
 		return filters[c]
 	return c
 
+# a generator,
 # a version of readlines that respects CSV syntax more closely
 def read_csv_lines(file : open, split_char : str, line_char : str, str_char : str):
+
+	print("Reading with delimiters: '{}', '{}'....".format(split_char, str_char))
+	
 	in_str = False
 	line = []
 	current_value = ""
@@ -54,3 +58,4 @@ def cards_from(file : str, split_char : str = '\t', str_char : str = '"'):
 		for vals in read:
 			if any(vals):
 				yield dict(zip(names, vals))
+    

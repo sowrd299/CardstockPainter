@@ -183,6 +183,9 @@ class TextBox():
 	# indexes are inclusive , inclusive
 	def style_text(self, draw, img, text, style, start_index, end_index):
 
+		if not text: # no point in trying to style text that isn't there
+			return
+
 		lines = text[start_index:end_index+(len(text) if end_index<0 else 0)+1].split("\n")
 		i = start_index
 		for line in lines:
