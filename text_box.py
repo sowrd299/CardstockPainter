@@ -37,13 +37,15 @@ class TextBox():
 
 	def __init__(self, pos : (int,int), width : int, render_text : "card => str",
 			symbols : {str : Image.Image} = {}, styles : [(str,"card=>(int,int)")] = [],
-			color = None, size = None, line_spaceing = None, font_file = None
+			color = None, size = None, line_spaceing = None, font_file = None,
+			rotation = 0
 	):
 		self.pos = pos
 		self.width = width
 		self.render_text = render_text
 		self.symbols = DictTree(symbols)
 		self.styles = styles # style describe when to bold, when to italicize
+		self.rotation = rotation
 
 		# setup type settings
 		if color:
@@ -58,6 +60,7 @@ class TextBox():
 			"bold" : self.faux_embolden_line,
 			"outline" : self.outline_line
 		}
+
 
 	# returns (<the text with symbol codes removed>, {(<symbol index> : <symbol>})
 	# TODO: add index mapping, and return symbols by original index
@@ -191,16 +194,16 @@ class TextBox():
 		for line in lines:
 			# for each line to style, find that line
 			offset = self.get_coord_in_text(draw, text, i)
-			pos = (self.pos[0] + offset[0], self.pos[1] + offset[1])
 			# apply the style
-			style(draw, img, line, pos)
+			style(draw, img, line, offset)
 			i += len(line) + 1
 
 	# draw the given text onto the given box
-	def render(self, img : Image.Image, card):
+	def render(self, cardImg : Image.Image, card):
 
 		# setup
 		text = self.render_text(card)
+		img = Image.new("RGBA", (self.width, self.width))
 		draw = ImageDraw.Draw(img)
 
 		# processing
@@ -209,13 +212,13 @@ class TextBox():
 
 		# rendering, including faux bold
 		# TODO: make a more robust faux bold that isn't all or nothing
-		draw.multiline_text(self.pos, wrapped_text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
-		char_size = draw.textsize("W") # assumes capkkital W largest letter
+		draw.multiline_text((0,0), wrapped_text, fill=self.text_color, font=self.font, spacing=self.line_spacing)
+		char_size = draw.textsize("W") # assumes capital W largest letter
 		for index, symbol in symbols.items():
 			symbol_size = ( int(char_size[1] * symbol.size[0] / symbol.size[0]) , char_size[1])
 			s = symbol.resize(symbol_size)
 			local_coords = self.get_coord_in_text(draw, wrapped_text, index_map_s_to_w.get_shifted_index(index)-1)
-			img_coords = ( int(self.pos[0] + local_coords[0]), int(self.pos[1] + local_coords[1]) )
+			img_coords = ( int(local_coords[0]), int(local_coords[1]) )
 			img.paste( s,  img_coords )
 
 		# apply styles
@@ -225,3 +228,8 @@ class TextBox():
 				continue
 			for index_range in index_ranges if type(index_ranges[0]) == tuple else [index_ranges]: # supports getting a list of index ranges
 				self.style_text(draw, img, wrapped_text, self.style_funcs[style], *(index_map_s_to_w.get_shifted_index(i) for i in index_range))
+
+		# Apply rotation
+		rotImg = img.rotate(self.rotation)
+
+		cardImg.paste( rotImg, self.pos)

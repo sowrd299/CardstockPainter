@@ -137,12 +137,18 @@ def frame_from(file_path : str):
             styles.append( (style.attrib["type"], lambda card, s=style.attrib["range"] : eval_card_field(s, card)))
         
         type_setting = type_settings[box.attrib["type_setting"]] if "type_setting" in box.attrib else dict()
+
+        rotation = 0
+        if "rotation" in box.attrib:
+            rotation = eval_pixel_field(box.attrib["rotation"])
+
         boxes[ box.attrib["name"] ] = TextBox(
                 (eval_pixel_field(box.attrib["x"]), eval_pixel_field(box.attrib["y"])),
                 eval_pixel_field(box.attrib["w"]),
                 lambda card, s = box.attrib["render_text"] if "render_text" in box.attrib else "'{{{0}}}'".format(box.attrib["name"]) : eval_card_field(s, card),
                 symbol_sets[box.attrib["symbols"]] if ("symbols" in box.attrib) else dict(),
                 styles,
+                rotation = rotation,
                 **type_setting
         )
 

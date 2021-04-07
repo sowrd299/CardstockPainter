@@ -88,9 +88,9 @@ class Frame():
 				img = self._composite( layer, img, (self.boarder_width, self.boarder_width) )
 
 		# draw the text boxes and pips
-		text_layer = self._new_blank_image()
 		for name, box in self.boxes.items():
+			text_layer = self._new_blank_image()
 			box.render(text_layer, derived_card)
-		img = self._composite(text_layer, img)
+			img = self._composite(text_layer, img)
 
 		return self.RenderedCard(img)
