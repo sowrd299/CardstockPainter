@@ -8,11 +8,11 @@ class Pips():
 	#   the step to each pip after that
 	#   the kinds of pips in the set, and when to render them
 	#   the condition when it knows it is on its last pip
-	def __init__(self, pos : (int, int), step : (int, int), pips : [("card,i=>bool", Image.Image)], end_when : ("card,i=>bool")):
+	def __init__(self, pos : (int, int), step : (int, int), pips : [("card,i=>bool", Image.Image)], continue_while : ("card,i=>bool")):
 		self.pos = pos
 		self.step = step
 		self.pips = pips
-		self.end_when = end_when
+		self.continue_while = continue_while
 
 	# draws pips onto the image, according to the given card's stats
 	def render(self, img : Image.Image, card : dict):
@@ -20,7 +20,7 @@ class Pips():
 		# walk through the indexes of pips
 		pos = self.pos
 		i = 1
-		while not self.end_when(card, i):
+		while self.continue_while(card, i):
 
 			#render all applicable pips at the index
 			for render_if, symbol in self.pips:

@@ -1,4 +1,5 @@
 from frame import Frame
+from tools import EMPTY, is_eval_dangerous, make_eval_safe
 
 from PIL import Image, ImageDraw, ImageTk
 from text_box import TextBox
@@ -14,56 +15,70 @@ import re
 known_regex = dict()
 
 
+# evaluates a parameterized field of a card
+# TODO: This *might* want to be its own thing? or at least the part getting stuff from dicts
+def eval_card_field(field_value : str, card : dict, **args ):
+
+    # HERE ARE THE FUNCTIONS  CALLABLE FROM CARD FIELDS
+
+    def indexes_of(matches):
+        if matches:
+            return [(match.start(), match.end()) for match in matches]
+        else:
+            return None
+
+    def regex_matches(regex, text):
+        global known_regex
+        compiled_regex = None
+        if regex in known_regex:
+            compiled_regex = known_regex[regex]
+        else:
+            compiled_regex = re.compile(regex)
+            known_regex[regex] = compiled_regex
+        matches = []
+        pos = 0
+        while True:
+            match = compiled_regex.search(text, pos)
+            if match:
+                matches.append(match)
+                pos = match.end()
+            else:
+                return matches
+
+    All = (0,-1)
+        
+    # Assemble the context, evaluate and return
+
+    context = card
+    if args:
+        context = dict(card, **args)
+
+    r = ""
+    try:
+        r = eval(field_value.replace("'","'''").format(**context))
+    # Errors in {Var}'s being used
+    except KeyError as e:
+        print('Failed to find key "{}" in context, treating as empty...'.format(e))
+        context[eval(str(e))] = EMPTY # NOTE: This is a weird trick for finding the failed key...
+        return eval_card_field(field_value, context)
+    # Errors in python syntax there-after
+    except (SyntaxError, TypeError, NameError) as e:
+        
+        # Handle correcting for eval-dangerous without a fuss
+        if any(map(is_eval_dangerous, context.values())): 
+            return eval_card_field(field_value, { k:make_eval_safe(v) for k,v in context.items() })
+
+        print('Illegal syntax in field "{}", evalling as "{}"!'.format(field_value, field_value.replace("'","'''").format(**context)))
+
+    return r
+
+
 # creates a new frame, as defined by the given xml file
 # TODO: handle getting XML data in different forms
 # TODO: break this into multiple methods like a civilized programmer
 # TODO: all these nest methods can't be efficient
 def frame_from(file_path : str):
 
-    # evaluates a parameterized field of a card
-    def eval_card_field(field_value : str, card : dict, **args ):
-
-        # HERE ARE THE FUNCTIONS  CALLABLE FROM CARD FIELDS
-
-        def indexes_of(matches):
-            if matches:
-                return [(match.start(), match.end()) for match in matches]
-            else:
-                return None
-
-        def regex_matches(regex, text):
-            global known_regex
-            compiled_regex = None
-            if regex in known_regex:
-                compiled_regex = known_regex[regex]
-            else:
-                compiled_regex = re.compile(regex)
-                known_regex[regex] = compiled_regex
-            matches = []
-            pos = 0
-            while True:
-                match = compiled_regex.search(text, pos)
-                if match:
-                    matches.append(match)
-                    pos = match.end()
-                else:
-                    return matches
-
-        All = (0,-1)
-            
-        # Assemble the context, evaluate and return
-
-        context = card
-        if args:
-            context = dict(card, **args)
-
-        r = ""
-        try:
-            r = eval(field_value.replace("'","'''").format(**context))
-        except KeyError as e:
-            print("Failed to find key:", e, "in context", context)
-
-        return r
 
     # opens the xml
     tree = ElementTree.parse(file_path)
@@ -87,7 +102,10 @@ def frame_from(file_path : str):
     open_layer = lambda file : Image.open(path.expanduser(path.join(directory, file))).resize( frame.get_inner_size() )
     for frame_layer in root.iter("frame_layer"):
         render_if = lambda card, s=frame_layer.attrib["render_if"] : eval_card_field(s, card)
-        frame_layers.append( (render_if, open_layer(frame_layer.attrib["file"])) )
+        try:
+            frame_layers.append( (render_if, open_layer(frame_layer.attrib["file"])) )
+        except FileNotFoundError as e:
+            print('Layer image "{}" could not be found!'.format(frame_layer.attrib["file"]))
 
     # create derived fields
     derived_fields = dict()
@@ -171,7 +189,7 @@ def frame_from(file_path : str):
             (eval_pixel_field(pips.attrib["x_step"]) if "x_step" in pips.attrib else 0,
             eval_pixel_field(pips.attrib["y_step"]) if "y_step" in pips.attrib else 0),
             ps,
-            lambda card, i, s=pips.attrib["end_when"] : eval_card_field(s,card,i=i)
+            lambda card, i, s=pips.attrib["continue_while"] : eval_card_field(s,card,i=i)
         )
 
     # assemble the frame and cleanup
