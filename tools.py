@@ -68,12 +68,18 @@ class _EmptyValue():
 		return hash("")
 	def __lt__(self, other):
 		return 0 < other
+	def __lte__(self, other):
+		return 0 <= other
 	def __eq__(self, other):
 		if self is other:
 			return True
 		return 0==other
+	def __ne__(self, other):
+		return not self is other and 0!=other
 	def __gt__(self, other):
 		return 0 > other
+	def __gte__(self, other):
+		return 0 >= other
 	def make_eval_safe(self):
 		return _EvalSafeEmptyValue()
 
