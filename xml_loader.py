@@ -106,10 +106,9 @@ def parse_attribs(nodes, node, derived_attribs : [DerivedAttrib]):
     for k in ("inherit", "type_setting"):
         if k in node.attrib:
             try:
-                inherit = nodes[node.attrib[k]]
-                break
+                inherit.update(nodes[node.attrib[k]])
             except KeyError as e:
-                print('Invalid type setting or inheritence; Element "{}" does not exist!'.format(node.attrib[k]))
+                print('Invalid "{}"; Element "{}" does not exist!'.format(k, node.attrib[k]))
 
     # copy the various settings
     d = dict(inherit)
