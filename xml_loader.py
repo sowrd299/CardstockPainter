@@ -75,22 +75,27 @@ def eval_card_field(field_value : str, card : dict, **args ):
     return r
 
 
-
 # a class for deriving values from raw input data
 class DerivedAttrib():
 
-    def __init__(self, output, function, inputs=None):
+    def __init__(self, output, function, inputs=None, default=None):
         self.output = output
         self.function = function
-        self.inputs = inputs or (output,) # defaults to having the same input and output
+        self.inputs = inputs if inputs != None else (output,) # defaults to having the same input and output
+        self.default = default if isinstance(default, DerivedAttrib) or default==None else ConstAttrib(output, default)
 
     # will only derive the value if all inputs are present, and atleast one
     #   ...input was updated since the inherited data
     def derive(self, data, updated_attribs=set()):
-        print(self.inputs, data, updated_attribs)
-        if all(i in data for i in self.inputs) and (not updated_attribs or any(i in updated_attribs for i in self.inputs)):
+        if all(i in data for i in self.inputs) and ((not updated_attribs) or (not (self.output in data)) or any(i in updated_attribs for i in self.inputs)):
             data[self.output] = self.function(*(data[i] for i in self.inputs))
+        elif self.default:
+            self.default.derive(data, updated_attribs)
 
+# a "derived" value that is always the same
+class ConstAttrib(DerivedAttrib):
+    def __init__(self, output, constant):
+        super().__init__(output, (lambda *args, c=constant : c), tuple())
 
 
 # Parses attributes from XML into a dictionary
@@ -112,13 +117,39 @@ def parse_attribs(nodes, node, derived_attribs : [DerivedAttrib]):
         d[attrib] = val
     # format settings
     for da in derived_attribs:
-        da.derive(d, node.attrib)
+        try:
+            da.derive(d, node.attrib)
+        except Exception as e:
+            print("Error in derivation of field {}".format(da.output))
+            raise e
 
     # cleanup 
     if "name" in node.attrib:
         nodes[node.attrib["name"]] = d
     return d
 
+
+def create_derived_fields(elements):
+    # create derived fields
+    derived_fields = dict()
+    for derived_field in elements:
+        derived_fields[derived_field.attrib["name"]] = lambda card, s=derived_field.attrib["eq"] : eval_card_field(s, card)
+        # NOTE: need to use extra value in agrument to capture value instead of variable
+    return derived_fields
+
+
+def create_symbol_sets(elements):
+    symbol_sets = dict()
+    for symbol_set in elements:
+
+        # setup image loading
+        directory = symbol_set.attrib["dir"]
+        open_sym = lambda file : Image.open(path.expanduser(path.join(directory, file)))
+
+        # build the symbol set
+        #   using itter instead of find allows for symbol super and subsets to function automatically (though not efficiently)
+        symbol_sets[ symbol_set.attrib["name"] ] = { sym.attrib["name"] : open_sym(sym.attrib["file"]) for sym in symbol_set.iter("symbol") }
+    return symbol_sets
 
 
 # creates a new frame, as defined by the given xml file
@@ -131,10 +162,16 @@ def frame_from(file_path : str):
     tree = ElementTree.parse(file_path)
     root = tree.getroot()
 
-    # setups the frame
+    # sets the frame up
     frame = Frame(size=(int(root.attrib["width"]), int(root.attrib["height"])))
+    
+    # invarient elements; todo: maybe these too should use parse attribs...
+    derived_fields = create_derived_fields(root.iter("derived_field"))
+    symbol_sets = create_symbol_sets(root.iter("symbol_set"))
+
+    # frame elements
     element_attribs = dict()
-    boxes = dict()
+    boxes = []
 
     # evaluates a peramiterized field of a pixel measurement
     def eval_pixel_field(value : str, frame_vars = { "w" : frame.size[0], "h" : frame.size[1], "bw" : frame.boarder_width } ):
@@ -148,45 +185,55 @@ def frame_from(file_path : str):
     # opens a layer image file
     directory = root.attrib["layer_dir"]
     open_layer = lambda file : Image.open(path.expanduser(path.join(directory, file))).resize( frame.get_inner_size() )
+
+    # determines if a frame element should be rendered on the card
     render_if = lambda render_if : (lambda card, p=render_if : eval_card_field(p, card))
 
+    # gets the text a text box should render
+    render_text = lambda field : (lambda card, s = field : eval_card_field(s, card))
+
+    # attributes of frame elements that must be derived from the raw data
     derived_attribs = [
         DerivedAttrib("size", eval_pixel_field),
         DerivedAttrib("line_spacing", eval_pixel_field),
         DerivedAttrib("color", eval_pixel_field),
+        DerivedAttrib("rotation", eval_pixel_field),
         DerivedAttrib("layer", open_layer, ("file",)),
         DerivedAttrib("render_if", render_if),
     ]
 
+    box_derived_attribs = [
+        DerivedAttrib("x", eval_pixel_field),
+        DerivedAttrib("y", eval_pixel_field),
+        DerivedAttrib("pos", (lambda x, y: (x,y)), ("x","y")),
+        DerivedAttrib("symbol_set", lambda k : symbol_sets[k],
+            default= dict()
+        ),
+        # text box specific
+        DerivedAttrib("width", eval_pixel_field, ("w",)),
+        DerivedAttrib("render_text", render_text,
+            default = DerivedAttrib("render_text", lambda name : render_text("'{{{0}}}'".format(name)), ("name",)), 
+        ),
+        # pips specific
+        DerivedAttrib("x_step", eval_pixel_field,
+            default= 0
+        ),
+        DerivedAttrib("y_step", eval_pixel_field,
+            default= 0
+        ),
+        DerivedAttrib("step", (lambda x, y: (x,y)), ("x_step","y_step")),
+        DerivedAttrib("continue_while", lambda continue_while : (lambda card, i, p=continue_while : eval_card_field(p,card,i=i)) ),
+    ]
+
     # create frame layers
     for frame_layer in root.iter("frame_layer"):
-        file = frame_layer.attrib["file"]
         try:
             attribs = parse_attribs(element_attribs, frame_layer, derived_attribs)
-            print(attribs)
-            boxes[file] = FrameLayer(pos=(frame.boarder_width, frame.boarder_width), **attribs)
+            boxes.append(FrameLayer(pos=(frame.boarder_width, frame.boarder_width), **attribs))
         except FileNotFoundError as e:
-            print('Layer image "{}" could not be found!'.format(file))
+            print('Layer image "{}" could not be found!'.format(frame_layer.attrib["file"]))
 
-    # create derived fields
-    derived_fields = dict()
-    for derived_field in root.iter("derived_field"):
-        derived_fields[derived_field.attrib["name"]] = lambda card, s=derived_field.attrib["eq"] : eval_card_field(s, card)
-        # NOTE: need to use extra value in agrument to capture value instead of variable
-
-    # create symbol sets
-    symbol_sets = dict()
-    for symbol_set in root.iter("symbol_set"):
-
-        # setup image loading
-        directory = symbol_set.attrib["dir"]
-        open_sym = lambda file : Image.open(path.expanduser(path.join(directory, file)))
-
-        # build the symbol set
-        #   using itter instead of find allows for symbol super and subsets to function automatically (though not efficiently)
-        symbol_sets[ symbol_set.attrib["name"] ] = { sym.attrib["name"] : open_sym(sym.attrib["file"]) for sym in symbol_set.iter("symbol") }
-
-    # create type setting presets
+    # create type setting presets (these are treated as frame elements so that they can be inherited from)
     for type_setting in root.iter("type_setting"):
         parse_attribs(element_attribs, type_setting, derived_attribs)
 
@@ -197,27 +244,12 @@ def frame_from(file_path : str):
         for style in box.iter("text_style"):
             styles.append( (style.attrib["type"], lambda card, s=style.attrib["range"] : eval_card_field(s, card)))
         
-        type_setting = element_attribs[box.attrib["type_setting"]] if "type_setting" in box.attrib else dict()
-
-        rotation = 0
-        if "rotation" in box.attrib:
-            rotation = eval_pixel_field(box.attrib["rotation"])
-
-        boxes[ box.attrib["name"] ] = TextBox(
-                (eval_pixel_field(box.attrib["x"]), eval_pixel_field(box.attrib["y"])),
-                eval_pixel_field(box.attrib["w"]),
-                lambda card, s = box.attrib["render_text"] if "render_text" in box.attrib else "'{{{0}}}'".format(box.attrib["name"]) : eval_card_field(s, card),
-                symbol_sets[box.attrib["symbols"]] if ("symbols" in box.attrib) else dict(),
-                styles,
-                rotation = rotation,
-                **type_setting
-        )
+        boxes.append( TextBox( styles = styles, **parse_attribs(element_attribs, box, derived_attribs+box_derived_attribs)) )
 
     # create pips; also deal with the fun the is naming a class in the plural
     for pips in root.iter("pips"):
-
-        symbol_set = symbol_sets[pips.attrib["symbol_set"]]
-
+        attribs = parse_attribs(element_attribs, pips, derived_attribs + box_derived_attribs)
+        symbol_set = attribs["symbol_set"]
         # add each pip symbol
         ps = []
         for pip in pips.iter("pip"):
@@ -225,15 +257,8 @@ def frame_from(file_path : str):
                 lambda card, i, s=pip.attrib["render_if"] : eval_card_field(s,card,i=i),
                 symbol_set[pip.attrib["symbol"]]
             ) )
-
         # build the pips object
-        boxes[ pips.attrib["name"] ] = Pips(
-            (eval_pixel_field(pips.attrib["x"]), eval_pixel_field(pips.attrib["y"])),
-            (eval_pixel_field(pips.attrib["x_step"]) if "x_step" in pips.attrib else 0,
-            eval_pixel_field(pips.attrib["y_step"]) if "y_step" in pips.attrib else 0),
-            ps,
-            lambda card, i, s=pips.attrib["continue_while"] : eval_card_field(s,card,i=i)
-        )
+        boxes.append( Pips( pips = ps, **attribs ) )
 
     # assemble the frame and cleanup
     frame.boxes = boxes

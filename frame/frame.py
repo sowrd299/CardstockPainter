@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageTk
 from .text_box import TextBox
 from .pips import Pips
+from .frame_element import FrameElement
 
 #returns fields derived from extant fields
 def get_derived_fields(item : dict, derived_fields : {str : "card => value"}):
@@ -33,7 +34,7 @@ class Frame():
 	bg_color = (255, 255, 255)
 
 	def __init__(self,
-			boxes : {str : TextBox or Pips} = dict(),
+			boxes : [FrameElement] = [],
 			derived_fields : {str : "card => value"} = dict(),
 			size : (int, int) = (225,315),
 	):
@@ -79,7 +80,7 @@ class Frame():
 		draw.rectangle(intern_rect, fill=self.bg_color)
 
 		# draw the text boxes and pips
-		for name, box in self.boxes.items():
+		for box in self.boxes:
 			text_layer = self._new_blank_image()
 			box.render(text_layer, derived_card)
 			img = self._composite(text_layer, img)
