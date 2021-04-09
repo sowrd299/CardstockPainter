@@ -1,9 +1,10 @@
-from frame import Frame
 from tools import EMPTY, is_eval_dangerous, make_eval_safe
 
 from PIL import Image, ImageDraw, ImageTk
-from text_box import TextBox
-from pips import Pips
+
+from frame.frame import Frame
+from frame.text_box import TextBox
+from frame.pips import Pips
 
 # for handling XML loading
 from xml.etree import ElementTree

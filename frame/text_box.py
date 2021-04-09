@@ -1,10 +1,12 @@
 from PIL import Image, ImageDraw, ImageFont
-from tools import DictTree
 from collections import defaultdict
 import math
 
+from tools import DictTree
+from .frame_element import FrameElement
+
 # a class for rendering text data onto the card
-class TextBox():
+class TextBox(FrameElement):
 
 	# tracks changing indexies at strings are edited
 	# allows code to reference consistent points accorss multiple versions
@@ -38,14 +40,12 @@ class TextBox():
 	def __init__(self, pos : (int,int), width : int, render_text : "card => str",
 			symbols : {str : Image.Image} = {}, styles : [(str,"card=>(int,int)")] = [],
 			color = None, size = None, line_spaceing = None, font_file = None,
-			rotation = 0
+			**kwargs
 	):
-		self.pos = pos
-		self.width = width
+		super().__init__(width=width, pos=pos, **kwargs)
 		self.render_text = render_text
 		self.symbols = DictTree(symbols)
 		self.styles = styles # style describe when to bold, when to italicize
-		self.rotation = rotation
 
 		# setup type settings
 		if color:
@@ -199,12 +199,11 @@ class TextBox():
 			i += len(line) + 1
 
 	# draw the given text onto the given box
-	def render(self, cardImg : Image.Image, card):
+	def _render(self, img : Image.Image, card):
 
 		# setup
-		text = self.render_text(card)
-		img = Image.new("RGBA", (self.width, self.width))
 		draw = ImageDraw.Draw(img)
+		text = self.render_text(card)
 
 		# processing
 		symbol_text, symbols = self.find_symbols(text)
@@ -230,6 +229,3 @@ class TextBox():
 				self.style_text(draw, img, wrapped_text, self.style_funcs[style], *(index_map_s_to_w.get_shifted_index(i) for i in index_range))
 
 		# Apply rotation
-		rotImg = img.rotate(self.rotation)
-
-		cardImg.paste( rotImg, self.pos)

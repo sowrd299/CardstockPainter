@@ -1,6 +1,6 @@
 from PIL import Image, ImageDraw, ImageTk
-from text_box import TextBox
-from pips import Pips
+from .text_box import TextBox
+from .pips import Pips
 
 #returns fields derived from extant fields
 def get_derived_fields(item : dict, derived_fields : {str : "card => value"}):
