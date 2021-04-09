@@ -76,12 +76,33 @@ def eval_card_field(field_value : str, card : dict, **args ):
 
 
 
+# Parses attributes from XML into a dictionary
+# Includes evaluating some variables and inheritence
+def parse_attribs(nodes, node, eval_attribs : {str : "str => str"} = dict()):
+    # the element to inherit from
+    try:
+        inherit = nodes[node.attrib["inherit"]] if "inherit" in node.attrib else dict()
+    except KeyError as e:
+        print('Invalid type setting inheritence; Type setting "{}" does not exist!'.format(node.attrib["inherit"]))
+    # the various settings of the type setting
+    d = dict(inherit)
+    for attrib, val in node.attrib.items():
+        eval_attrib = eval_attribs[attrib] if attrib in eval_attribs else lambda x : x
+        d[attrib] = eval_attrib(val)
+    try:
+        nodes[node.attrib["name"]] = d
+    except KeyError as e:
+        # TODO: maybe names... shouldn't be mandatory?
+        print('Invalid element; missing "name"!')
+
+
+
+
 # creates a new frame, as defined by the given xml file
 # TODO: handle getting XML data in different forms
 # TODO: break this into multiple methods like a civilized programmer
 # TODO: all these nest methods can't be efficient
 def frame_from(file_path : str):
-
 
     # opens the xml
     tree = ElementTree.parse(file_path)
@@ -89,6 +110,7 @@ def frame_from(file_path : str):
 
     # setups the frame
     frame = Frame(size=(int(root.attrib["width"]), int(root.attrib["height"])))
+    element_attribs = dict()
     boxes = dict()
 
     # evaluates a peramiterized field of a pixel measurement
@@ -130,25 +152,8 @@ def frame_from(file_path : str):
         symbol_sets[ symbol_set.attrib["name"] ] = { sym.attrib["name"] : open_sym(sym.attrib["file"]) for sym in symbol_set.iter("symbol") }
 
     # create type setting presets
-    type_settings = dict()
     for type_setting in root.iter("type_setting"):
-        # the type setting to inherit from
-        try:
-            inherit = type_settings[type_setting.attrib["inherit"]] if "inherit" in type_setting.attrib else dict()
-        except KeyError as e:
-            print('Invalid type setting inheritence; Type setting "{}" does not exist!'.format(type_setting.attrib["inherit"]))
-        # the various settings of the type setting
-        d = dict()
-        for setting in ["size", "line_spacing", "color", "font_file"]:
-            if setting in type_setting.attrib:
-                d[setting] = eval_pixel_field(type_setting.attrib[setting]) if setting != "font_file" else type_setting.attrib[setting]
-            elif setting in inherit:
-                d[setting] = inherit[setting]
-        try:
-            type_settings[type_setting.attrib["name"]] = d
-        except KeyError as e:
-            print('Invalid type setting; missing "name"!')
-    print("Loaded type settings {}...".format(", ".join(type_settings)))
+        parse_attribs(element_attribs, type_setting, {"size" : eval_pixel_field, "line_spacing" : eval_pixel_field, "color" : eval_pixel_field})
 
     # create text boxes
     for box in root.iter("text_box"):
@@ -157,7 +162,7 @@ def frame_from(file_path : str):
         for style in box.iter("text_style"):
             styles.append( (style.attrib["type"], lambda card, s=style.attrib["range"] : eval_card_field(s, card)))
         
-        type_setting = type_settings[box.attrib["type_setting"]] if "type_setting" in box.attrib else dict()
+        type_setting = element_attribs[box.attrib["type_setting"]] if "type_setting" in box.attrib else dict()
 
         rotation = 0
         if "rotation" in box.attrib:

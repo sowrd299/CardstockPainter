@@ -3,7 +3,7 @@ from PIL import Image
 # a super class for everything that gets drawn onto the card
 class FrameElement():
 
-	def __init__(self, render_if = lambda x : True, pos = (0,0), width=500, rotation = 0):
+	def __init__(self, render_if = lambda x : True, pos = (0,0), width=500, rotation = 0, **kwargs):
 		self.render_if = render_if
 		self.pos = pos
 		self.width = width
