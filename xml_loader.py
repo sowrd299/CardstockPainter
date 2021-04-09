@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageTk
 from frame.frame import Frame
 from frame.text_box import TextBox
 from frame.pips import Pips
+from frame.frame_layer import FrameLayer
 
 # for handling XML loading
 from xml.etree import ElementTree
@@ -74,6 +75,7 @@ def eval_card_field(field_value : str, card : dict, **args ):
     return r
 
 
+
 # creates a new frame, as defined by the given xml file
 # TODO: handle getting XML data in different forms
 # TODO: break this into multiple methods like a civilized programmer
@@ -87,6 +89,7 @@ def frame_from(file_path : str):
 
     # setups the frame
     frame = Frame(size=(int(root.attrib["width"]), int(root.attrib["height"])))
+    boxes = dict()
 
     # evaluates a peramiterized field of a pixel measurement
     def eval_pixel_field(value : str, frame_vars = { "w" : frame.size[0], "h" : frame.size[1], "bw" : frame.boarder_width } ):
@@ -98,13 +101,13 @@ def frame_from(file_path : str):
         return r
 
     # create frame layers
-    frame_layers = []
     directory = root.attrib["layer_dir"]
     open_layer = lambda file : Image.open(path.expanduser(path.join(directory, file))).resize( frame.get_inner_size() )
     for frame_layer in root.iter("frame_layer"):
         render_if = lambda card, s=frame_layer.attrib["render_if"] : eval_card_field(s, card)
         try:
-            frame_layers.append( (render_if, open_layer(frame_layer.attrib["file"])) )
+            file = frame_layer.attrib["file"]
+            boxes[file] = FrameLayer(open_layer(file), render_if=render_if, pos=(frame.boarder_width, frame.boarder_width))
         except FileNotFoundError as e:
             print('Layer image "{}" could not be found!'.format(frame_layer.attrib["file"]))
 
@@ -126,7 +129,7 @@ def frame_from(file_path : str):
         #   using itter instead of find allows for symbol super and subsets to function automatically (though not efficiently)
         symbol_sets[ symbol_set.attrib["name"] ] = { sym.attrib["name"] : open_sym(sym.attrib["file"]) for sym in symbol_set.iter("symbol") }
 
-    # create type setting presents
+    # create type setting presets
     type_settings = dict()
     for type_setting in root.iter("type_setting"):
         # the type setting to inherit from
@@ -148,7 +151,6 @@ def frame_from(file_path : str):
     print("Loaded type settings {}...".format(", ".join(type_settings)))
 
     # create text boxes
-    boxes = dict()
     for box in root.iter("text_box"):
 
         styles = []
@@ -194,7 +196,6 @@ def frame_from(file_path : str):
         )
 
     # assemble the frame and cleanup
-    frame.frame_layers = frame_layers
     frame.boxes = boxes
     frame.derived_fields = derived_fields
 

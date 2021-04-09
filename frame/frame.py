@@ -33,13 +33,10 @@ class Frame():
 	bg_color = (255, 255, 255)
 
 	def __init__(self,
-			frame_layers : [("card => bool", Image.Image)] = [],
 			boxes : {str : TextBox or Pips} = dict(),
 			derived_fields : {str : "card => value"} = dict(),
 			size : (int, int) = (225,315),
 	):
-
-		self.frame_layers = frame_layers
 		self.boxes = boxes 
 		self.derived_fields = derived_fields
 		self.size = size
@@ -80,12 +77,6 @@ class Frame():
 		draw = ImageDraw.Draw(img)
 		intern_rect =[(self.boarder_width, self.boarder_width), (self.size[0]-self.boarder_width, self.size[1]-self.boarder_width)] 
 		draw.rectangle(intern_rect, fill=self.bg_color)
-
-		# draw frame layers
-		for render_if,layer in self.frame_layers:
-			if render_if(derived_card):
-				#print("Rendering frame layer") # TODO: Testing
-				img = self._composite( layer, img, (self.boarder_width, self.boarder_width) )
 
 		# draw the text boxes and pips
 		for name, box in self.boxes.items():
