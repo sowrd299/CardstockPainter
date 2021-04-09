@@ -76,25 +76,48 @@ def eval_card_field(field_value : str, card : dict, **args ):
 
 
 
+# a class for deriving values from raw input data
+class DerivedAttrib():
+
+    def __init__(self, output, function, inputs=None):
+        self.output = output
+        self.function = function
+        self.inputs = inputs or (output,) # defaults to having the same input and output
+
+    # will only derive the value if all inputs are present, and atleast one
+    #   ...input was updated since the inherited data
+    def derive(self, data, updated_attribs=set()):
+        print(self.inputs, data, updated_attribs)
+        if all(i in data for i in self.inputs) and (not updated_attribs or any(i in updated_attribs for i in self.inputs)):
+            data[self.output] = self.function(*(data[i] for i in self.inputs))
+
+
+
 # Parses attributes from XML into a dictionary
 # Includes evaluating some variables and inheritence
-def parse_attribs(nodes, node, eval_attribs : {str : "str => str"} = dict()):
+def parse_attribs(nodes, node, derived_attribs : [DerivedAttrib]):
     # the element to inherit from
-    try:
-        inherit = nodes[node.attrib["inherit"]] if "inherit" in node.attrib else dict()
-    except KeyError as e:
-        print('Invalid type setting inheritence; Type setting "{}" does not exist!'.format(node.attrib["inherit"]))
-    # the various settings of the type setting
+    inherit = dict()
+    for k in ("inherit", "type_setting"):
+        if k in node.attrib:
+            try:
+                inherit = nodes[node.attrib[k]]
+                break
+            except KeyError as e:
+                print('Invalid type setting or inheritence; Element "{}" does not exist!'.format(node.attrib[k]))
+
+    # copy the various settings
     d = dict(inherit)
     for attrib, val in node.attrib.items():
-        eval_attrib = eval_attribs[attrib] if attrib in eval_attribs else lambda x : x
-        d[attrib] = eval_attrib(val)
-    try:
-        nodes[node.attrib["name"]] = d
-    except KeyError as e:
-        # TODO: maybe names... shouldn't be mandatory?
-        print('Invalid element; missing "name"!')
+        d[attrib] = val
+    # format settings
+    for da in derived_attribs:
+        da.derive(d, node.attrib)
 
+    # cleanup 
+    if "name" in node.attrib:
+        nodes[node.attrib["name"]] = d
+    return d
 
 
 
@@ -122,16 +145,28 @@ def frame_from(file_path : str):
             r = tuple(int(i) for i in r)
         return r
 
-    # create frame layers
+    # opens a layer image file
     directory = root.attrib["layer_dir"]
     open_layer = lambda file : Image.open(path.expanduser(path.join(directory, file))).resize( frame.get_inner_size() )
+    render_if = lambda render_if : (lambda card, p=render_if : eval_card_field(p, card))
+
+    derived_attribs = [
+        DerivedAttrib("size", eval_pixel_field),
+        DerivedAttrib("line_spacing", eval_pixel_field),
+        DerivedAttrib("color", eval_pixel_field),
+        DerivedAttrib("layer", open_layer, ("file",)),
+        DerivedAttrib("render_if", render_if),
+    ]
+
+    # create frame layers
     for frame_layer in root.iter("frame_layer"):
-        render_if = lambda card, s=frame_layer.attrib["render_if"] : eval_card_field(s, card)
+        file = frame_layer.attrib["file"]
         try:
-            file = frame_layer.attrib["file"]
-            boxes[file] = FrameLayer(open_layer(file), render_if=render_if, pos=(frame.boarder_width, frame.boarder_width))
+            attribs = parse_attribs(element_attribs, frame_layer, derived_attribs)
+            print(attribs)
+            boxes[file] = FrameLayer(pos=(frame.boarder_width, frame.boarder_width), **attribs)
         except FileNotFoundError as e:
-            print('Layer image "{}" could not be found!'.format(frame_layer.attrib["file"]))
+            print('Layer image "{}" could not be found!'.format(file))
 
     # create derived fields
     derived_fields = dict()
@@ -153,7 +188,7 @@ def frame_from(file_path : str):
 
     # create type setting presets
     for type_setting in root.iter("type_setting"):
-        parse_attribs(element_attribs, type_setting, {"size" : eval_pixel_field, "line_spacing" : eval_pixel_field, "color" : eval_pixel_field})
+        parse_attribs(element_attribs, type_setting, derived_attribs)
 
     # create text boxes
     for box in root.iter("text_box"):

@@ -63,7 +63,7 @@ class _EmptyValue():
 	def __getitem__(self, key):
 		return self
 	def __repr__(self):
-		return 'EMPTY'
+		return 'EMPTY.make_eval_safe()'
 	def __hash__(self):
 		return hash("")
 	def __lt__(self, other):
@@ -120,8 +120,10 @@ def is_eval_dangerous(obj : object):
 	try:
 		eval(repr(obj))
 		return True
-	except Exception:
+	except SyntaxError:
 		return False
+	except (NameError, KeyError, IndexError):
+		return True
 
 # attempts to convert objects into a form where __repr__ produces legal python
 def make_eval_safe(obj : object):
