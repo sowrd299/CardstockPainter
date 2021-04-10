@@ -1,4 +1,5 @@
 import tkinter
+import os
 from tkinter import filedialog
 from pdf_renderer import PdfRenderer
 
@@ -7,12 +8,13 @@ class FileOpenerUI():
 
 	not_loaded_text = "NO FILE LOADED"
 
-	def __init__(self, name, root, on_load, file_class = open, class_args = [], *args, **kwargs):
+	def __init__(self, name, root, on_load, file_class = open, class_args = [], is_dir=False, *args, **kwargs):
 
 		self.name = name
 		self.root = tkinter.Frame(root)
 		self.on_load = on_load
 		self.file_class = file_class
+		self.is_dir = is_dir
 		self.class_args = class_args # arguments to be passed in to the opener class, as tk variables
 		self.args = args
 		self.kwargs = kwargs
@@ -46,7 +48,8 @@ class FileOpenerUI():
 
 	def load(self):
 
-		path = filedialog.askopenfilename(title="Open {0}".format(self.name), *self.args, **self.kwargs)
+		func = filedialog.askdirectory if self.is_dir else filedialog.askopenfilename
+		path = func(title="Open {0}".format(self.name), *self.args, **self.kwargs)
 		if path:
 			file = self.file_class(path, *(arg.get() for arg in self.class_args) )
 			self.file_label.config(text = path)
@@ -94,6 +97,7 @@ class RendererUI():
 		# variables
 		self.will_save = tkinter.IntVar(self.root)
 		self.will_pdf = tkinter.IntVar(self.root)
+		self.save_dir = tkinter.StringVar(self.root)
 		self.val_delimiter = tkinter.StringVar(self.root, ",")
 		self.str_delimiter = tkinter.StringVar(self.root, '"')
 
@@ -123,6 +127,17 @@ class RendererUI():
 		# card disp gui
 		self.card_disp = tkinter.Label(self.root)
 		self.card_disp.pack()
+
+		# output director
+		self.save_dir_loader = FileOpenerUI(
+			"Directory to Save to",
+			self.root,
+			lambda x : self.refresh,
+			self.save_dir.set,
+			is_dir=True
+			initialdir=initialdir
+		)
+		self.save_dir_loader.pack()
 
 		# action checkboxes
 		self.checkboxes = tkinter.Frame(self.root)
@@ -183,7 +198,8 @@ class RendererUI():
 	def apply_actions(self, rcard):
 
 		if self.will_save.get():
-			rcard.save(self.save_dir+card["Name"].replace(" ","")+".jpg")
+			img_name = self.card["Name"].replace(" ","")+".jpg"
+			rcard.save(os.path.join(self.save_dir.get(), img_name))
 
 		if self.will_pdf.get():
 			if not self.pdf:
