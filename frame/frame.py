@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw, ImageTk
 from .text_box import TextBox
 from .pips import Pips
 from .frame_element import FrameElement
+from card_data import CardData
 
 #returns fields derived from extant fields
 def get_derived_fields(item : dict, derived_fields : {str : "card => value"}):
@@ -70,8 +71,9 @@ class Frame():
 		img = self._new_blank_image(self.boarder_color)
 
 		# setup the card
+		# TODO: Derived fields might make more sense in CardData...
 		df = get_derived_fields(card, self.derived_fields)
-		derived_card = dict(card, **df)
+		derived_card = CardData(card, **df)
 
 		# create the boarder (by subtraction)
 		# TODO: consider moving this to it's own class

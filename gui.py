@@ -134,7 +134,7 @@ class RendererUI():
 			self.root,
 			lambda x : self.refresh,
 			self.save_dir.set,
-			is_dir=True
+			is_dir=True,
 			initialdir=initialdir
 		)
 		self.save_dir_loader.pack()

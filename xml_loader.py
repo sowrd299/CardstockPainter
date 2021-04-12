@@ -10,69 +10,6 @@ from frame.frame_layer import FrameLayer
 # for handling XML loading
 from xml.etree import ElementTree
 from os import path
-import re
-
-# part of XML handling
-# a place for cashing regex expected to be seen often
-known_regex = dict()
-
-
-# evaluates a parameterized field of a card
-# TODO: This *might* want to be its own thing? or at least the part getting stuff from dicts
-def eval_card_field(field_value : str, card : dict, **args ):
-
-    # HERE ARE THE FUNCTIONS  CALLABLE FROM CARD FIELDS
-
-    def indexes_of(matches):
-        if matches:
-            return [(match.start(), match.end()) for match in matches]
-        else:
-            return None
-
-    def regex_matches(regex, text):
-        global known_regex
-        compiled_regex = None
-        if regex in known_regex:
-            compiled_regex = known_regex[regex]
-        else:
-            compiled_regex = re.compile(regex)
-            known_regex[regex] = compiled_regex
-        matches = []
-        pos = 0
-        while True:
-            match = compiled_regex.search(text, pos)
-            if match:
-                matches.append(match)
-                pos = match.end()
-            else:
-                return matches
-
-    All = (0,-1)
-        
-    # Assemble the context, evaluate and return
-
-    context = card
-    if args:
-        context = dict(card, **args)
-
-    r = ""
-    try:
-        r = eval(field_value.replace("'","'''").format(**context))
-    # Errors in {Var}'s being used
-    except KeyError as e:
-        print('Failed to find key "{}" in context, treating as empty...'.format(e))
-        context[eval(str(e))] = EMPTY # NOTE: This is a weird trick for finding the failed key...
-        return eval_card_field(field_value, context)
-    # Errors in python syntax there-after
-    except (SyntaxError, TypeError, NameError) as e:
-        
-        # Handle correcting for eval-dangerous without a fuss
-        if any(map(is_eval_dangerous, context.values())): 
-            return eval_card_field(field_value, { k:make_eval_safe(v) for k,v in context.items() })
-
-        print('Illegal syntax in field "{}", evalling as "{}"!'.format(field_value, field_value.replace("'","'''").format(**context)))
-
-    return r
 
 
 # a class for deriving values from raw input data
@@ -132,7 +69,7 @@ def create_derived_fields(elements):
     # create derived fields
     derived_fields = dict()
     for derived_field in elements:
-        derived_fields[derived_field.attrib["name"]] = lambda card, s=derived_field.attrib["eq"] : eval_card_field(s, card)
+        derived_fields[derived_field.attrib["name"]] = lambda card, s=derived_field.attrib["eq"] : card.eval_card_field(s)
         # NOTE: need to use extra value in agrument to capture value instead of variable
     return derived_fields
 
@@ -186,10 +123,10 @@ def frame_from(file_path : str):
     open_layer = lambda file : Image.open(path.expanduser(path.join(directory, file))).resize( frame.get_inner_size() )
 
     # determines if a frame element should be rendered on the card
-    render_if = lambda render_if : (lambda card, p=render_if : eval_card_field(p, card))
+    render_if = lambda render_if : (lambda card, p=render_if : card.eval_card_field(p))
 
     # gets the text a text box should render
-    render_text = lambda field : (lambda card, s = field : eval_card_field(s, card))
+    render_text = lambda field : (lambda card, s = field : card.eval_card_field(s))
 
     # attributes of frame elements that must be derived from the raw data
     derived_attribs = [
@@ -221,7 +158,7 @@ def frame_from(file_path : str):
             default= 0
         ),
         DerivedAttrib("step", (lambda x, y: (x,y)), ("x_step","y_step")),
-        DerivedAttrib("continue_while", lambda continue_while : (lambda card, i, p=continue_while : eval_card_field(p,card,i=i)) ),
+        DerivedAttrib("continue_while", lambda continue_while : (lambda card, i, p=continue_while : card.eval_card_field(p, i=i)) ),
     ]
 
     # create frame layers
@@ -241,7 +178,7 @@ def frame_from(file_path : str):
 
         styles = []
         for style in box.iter("text_style"):
-            styles.append( (style.attrib["type"], lambda card, s=style.attrib["range"] : eval_card_field(s, card)))
+            styles.append( (style.attrib["type"], lambda card, s=style.attrib["range"] : card.eval_card_field(s)))
         
         boxes.append( TextBox( styles = styles, **parse_attribs(element_attribs, box, derived_attribs+box_derived_attribs)) )
 
@@ -253,7 +190,7 @@ def frame_from(file_path : str):
         ps = []
         for pip in pips.iter("pip"):
             ps.append( (
-                lambda card, i, s=pip.attrib["render_if"] : eval_card_field(s,card,i=i),
+                lambda card, i, s=pip.attrib["render_if"] : card.eval_card_field(s,i=i),
                 symbol_set[pip.attrib["symbol"]]
             ) )
         # build the pips object

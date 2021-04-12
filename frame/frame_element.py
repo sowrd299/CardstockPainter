@@ -12,7 +12,7 @@ class FrameElement():
 	def _render(self):
 		raise NotImplementedError
 
-	def render(self, cardImg : Image.Image, card : dict):
+	def render(self, cardImg : Image.Image, card):
 
 		if self.render_if(card):
 			img = Image.new("RGBA", (self.width, self.width))
