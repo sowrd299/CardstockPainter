@@ -8,6 +8,7 @@ class CardData(dict):
 
     tuple_char = ","
     known_regex = dict()
+    index_char = "_"
 
     def __init__(self, *args, mapping = [], **kwargs):
         super().__init__(*args, **kwargs)
@@ -29,7 +30,7 @@ class CardData(dict):
     def index_tuple_value(self, k, v):
         t = v if isinstance(v, tuple) else (v,)
         for i,entry in enumerate(t):
-            self._super_set("{}_{}".format(k,i), entry)
+            self._super_set("{}{}{}".format(k,self.index_char,i), entry)
 
     def __getitem__(self, key):
         return super().__getitem__(key)
@@ -38,6 +39,20 @@ class CardData(dict):
         v = self.eval_value(val)
         self._super_set(key, v)
         self.index_tuple_value(key, v)
+
+    # generator
+    def singleton_items(self):
+        for k,v in self.items():
+            unindexed = self.index_char.join(k.split(self.index_char)[:-1])
+            print(unindexed)
+            if not (unindexed and unindexed in self):
+                print("Yielding...")
+                yield k,v
+
+    # generator
+    def singleton_keys(self):
+        for k,_ in self.singleton_items():
+            yield k
 
     # evaluates a parameterized field of a card
     # TODO: This *might* want to be its own thing? or at least the part getting stuff from dicts
@@ -69,6 +84,9 @@ class CardData(dict):
                     pos = match.end()
                 else:
                     return matches
+
+        def make_alnum(text):
+            return "".join( filter(lambda  c : c.isalnum(), text) )
 
         All = (0,-1)
             

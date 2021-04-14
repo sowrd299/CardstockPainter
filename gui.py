@@ -2,6 +2,7 @@ import tkinter
 import os
 from tkinter import filedialog
 from pdf_renderer import PdfRenderer
+from csv_exporter import CsvExporter
 
 # a class for a UI element that opens files
 class FileOpenerUI():
@@ -91,13 +92,17 @@ class RendererUI():
 
 		# misc state variables
 		self.pdf = None
+		self.csv = None
 		self.finished = False # tracks if have made it to the end of the list of cards
 		self.rcard = None
+		self.card = None
 
 		# variables
 		self.will_save = tkinter.IntVar(self.root)
 		self.will_pdf = tkinter.IntVar(self.root)
-		self.save_dir = tkinter.StringVar(self.root)
+		self.will_csv = tkinter.IntVar(self.root)
+		self.save_dir = tkinter.StringVar(self.root, "./")
+		self.set = tkinter.StringVar(self.root, "Core")
 		self.val_delimiter = tkinter.StringVar(self.root, ",")
 		self.str_delimiter = tkinter.StringVar(self.root, '"')
 
@@ -129,22 +134,29 @@ class RendererUI():
 		self.card_disp.pack()
 
 		# output director
+		self.output_uis = tkinter.Frame(self.root)
 		self.save_dir_loader = FileOpenerUI(
 			"Directory to Save to",
-			self.root,
+			self.output_uis,
 			lambda x : self.refresh,
 			self.save_dir.set,
 			is_dir=True,
 			initialdir=initialdir
 		)
-		self.save_dir_loader.pack()
+		self.save_dir_loader.pack(side = tkinter.LEFT)
+		self.set_ui = EntriesUI(self.output_uis, {"Card Set": self.set}, width=10)
+		self.set_ui.pack(side = tkinter.LEFT)
+		self.output_uis.pack()
 
 		# action checkboxes
+		# TODO: generalize this code
 		self.checkboxes = tkinter.Frame(self.root)
 		self.save_box = tkinter.Checkbutton(self.checkboxes, text="Save Image", variable=self.will_save, command=self.refresh)
 		self.save_box.pack(side = tkinter.LEFT)
 		self.pdf_box = tkinter.Checkbutton(self.checkboxes, text="Add to PDF", variable=self.will_pdf, command=self.refresh)
 		self.pdf_box.pack(side = tkinter.LEFT)
+		self.csv_box = tkinter.Checkbutton(self.checkboxes, text="Add to CSV", variable=self.will_csv, command=self.refresh)
+		self.csv_box.pack(side = tkinter.LEFT)
 		self.checkboxes.pack()
 
 		# control buttons
@@ -195,16 +207,27 @@ class RendererUI():
 			next_actions.append("add to pdf")
 		self.next_button.config(text = "Next{0}".format(" (will {0})".format(", ".join(next_actions)) if next_actions else ""))
 
+
 	def apply_actions(self, rcard):
 
+		# TODO: Generalize this code
+		img_name = ""
+		if self.card:
+			img_name = self.card.eval_card_field("make_alnum('{Name}') + '.jpg'")
+
 		if self.will_save.get():
-			img_name = self.card["Name"].replace(" ","")+".jpg"
-			rcard.save(os.path.join(self.save_dir.get(), img_name))
+			rcard.save(os.path.join(self.save_dir.get(), self.set.get(), img_name))
+
+		if self.will_csv.get():
+			if not self.csv:
+				self.csv = CsvExporter(os.path.join(self.save_dir.get(), "carddata.txt"))
+			self.csv.add(self.card, set_name=self.set.get(), img_name=img_name)
 
 		if self.will_pdf.get():
 			if not self.pdf:
 				self.pdf = PdfRenderer("./output.pdf")
 			self.pdf.add(self.rcard.get_image())
+
 
 	# advances to the next card
 	def next_card(self):
