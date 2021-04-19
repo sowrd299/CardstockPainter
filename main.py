@@ -13,6 +13,6 @@ if __name__ == "__main__":
 	# setup basics
 	root = tkinter.Tk()
 	root.title("Card Renderer")
-	ui = RendererUI(xml_loader.frame_from, csv_loader.cards_from, root, initialdir=sys.argv[1])
+	ui = RendererUI(xml_loader.frame_from, csv_loader.cards_from, root, initialdir=sys.argv[1], outputdir=sys.argv[2])
 
 	root.mainloop()

@@ -83,7 +83,7 @@ class EntriesUI(tkinter.Frame):
 # Then main UI for the program
 class RendererUI():
 
-	def __init__(self, frame_class, card_class, window, initialdir="."):
+	def __init__(self, frame_class, card_class, window, initialdir=".", outputdir="."):
 
 		# basicis
 		self.root = tkinter.Frame(window)
@@ -101,7 +101,7 @@ class RendererUI():
 		self.will_save = tkinter.IntVar(self.root)
 		self.will_pdf = tkinter.IntVar(self.root)
 		self.will_csv = tkinter.IntVar(self.root)
-		self.save_dir = tkinter.StringVar(self.root, "./")
+		self.save_dir = tkinter.StringVar(self.root, outputdir)
 		self.set = tkinter.StringVar(self.root, "Core")
 		self.val_delimiter = tkinter.StringVar(self.root, ",")
 		self.str_delimiter = tkinter.StringVar(self.root, '"')
@@ -141,7 +141,7 @@ class RendererUI():
 			lambda x : self.refresh,
 			self.save_dir.set,
 			is_dir=True,
-			initialdir=initialdir
+			initialdir=self.save_dir.get()
 		)
 		self.save_dir_loader.pack(side = tkinter.LEFT)
 		self.set_ui = EntriesUI(self.output_uis, {"Card Set": self.set}, width=10)
@@ -216,7 +216,11 @@ class RendererUI():
 			img_name = self.card.eval_card_field("make_alnum('{Name}') + '.jpg'")
 
 		if self.will_save.get():
-			rcard.save(os.path.join(self.save_dir.get(), self.set.get(), img_name))
+			path = os.path.join(self.save_dir.get(), self.set.get(), img_name)
+			directory = os.path.dirname(path)
+			if not os.path.exists(directory):
+				os.mkdir(directory)
+			rcard.save(path)
 
 		if self.will_csv.get():
 			if not self.csv:
@@ -254,6 +258,7 @@ class RendererUI():
 	def save_and_exit(self):
 
 		self.apply_actions(self.rcard)
-		if self.pdf:
-			self.pdf.save()
+		for exporter in (self.pdf, self.csv):
+			if exporter:
+				exporter.save()
 		self.root.quit()

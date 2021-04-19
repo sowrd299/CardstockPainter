@@ -44,9 +44,7 @@ class CardData(dict):
     def singleton_items(self):
         for k,v in self.items():
             unindexed = self.index_char.join(k.split(self.index_char)[:-1])
-            print(unindexed)
             if not (unindexed and unindexed in self):
-                print("Yielding...")
                 yield k,v
 
     # generator
